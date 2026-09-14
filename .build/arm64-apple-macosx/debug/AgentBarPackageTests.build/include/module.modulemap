@@ -1,0 +1,3 @@
+module AgentBarPackageTests {
+    header "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/include/AgentBarPackageTests-Swift.h"
+}

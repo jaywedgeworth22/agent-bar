@@ -1,0 +1,1473 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.xctest/Contents/MacOS/AgentBarPackageTests",
+      "packagePath" : "/Users/jay/Code/agent-bar",
+      "productName" : "AgentBarPackageTests"
+    }
+  ],
+  "copyCommands" : {
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/README.md" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/README.md"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/README.md"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/claude.svg" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/claude.svg"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/claude.svg"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/cursor.png" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/cursor.png"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/cursor.png"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/deepseek.svg" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/deepseek.svg"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/deepseek.svg"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/gemini.png" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/gemini.png"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/gemini.png"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/gemini.svg" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/gemini.svg"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/gemini.svg"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/grok.svg" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/grok.svg"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/grok.svg"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/minimax.svg" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/minimax.svg"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/minimax.svg"
+        }
+      ]
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/openai.svg" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/Resources/ProviderMarks/openai.svg"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar_AgentBar.bundle/openai.svg"
+        }
+      ]
+    }
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.AgentBar-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/sources",
+      "importPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/AppDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/MonitorModel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/PlatformLogo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/QuotaViews.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/TokenStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/DerivedSources/resource_bundle_accessor.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<AgentBar-arm64-apple-macosx-debug.module-resources>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "AgentBar",
+      "moduleOutputPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/AgentBar.swiftmodule",
+      "objects" : [
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j2",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_AVAILABLE",
+        "-module-cache-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "AgentBar_main",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "agent_bar"
+      ],
+      "outputFileMapPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/AgentBar.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/jay/Code/agent-bar/Sources/AgentBar/AppDelegate.swift",
+        "/Users/jay/Code/agent-bar/Sources/AgentBar/MonitorModel.swift",
+        "/Users/jay/Code/agent-bar/Sources/AgentBar/PlatformLogo.swift",
+        "/Users/jay/Code/agent-bar/Sources/AgentBar/QuotaViews.swift",
+        "/Users/jay/Code/agent-bar/Sources/AgentBar/TokenStore.swift",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/DerivedSources/resource_bundle_accessor.swift"
+      ],
+      "tempsPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.AgentBarPackageTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/sources",
+      "importPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "AgentBarPackageTests",
+      "moduleOutputPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/AgentBarPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j2",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/include/AgentBarPackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "agent_bar"
+      ],
+      "outputFileMapPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/AgentBarPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.QuotaCore-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/sources",
+      "importPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/AdditionalQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravityQuotaGroups.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravitySummaryReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/BoundedQuotaProcess.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/ClaudeCredentialSource.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/CursorQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/GrokBotQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaSnapshot.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaPublisher.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "QuotaCore",
+      "moduleOutputPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCore.swiftmodule",
+      "objects" : [
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j2",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/include/QuotaCore-Swift.h",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "agent_bar"
+      ],
+      "outputFileMapPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/AdditionalQuotaReader.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravityQuotaGroups.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravitySummaryReader.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/BoundedQuotaProcess.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/ClaudeCredentialSource.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/CursorQuotaReader.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/GrokBotQuotaReader.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaReader.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaSnapshot.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaClient.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaModels.swift",
+        "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaPublisher.swift"
+      ],
+      "tempsPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.QuotaCoreTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/sources",
+      "importPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AdditionalQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravityQuotaGroupsTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravitySummaryReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/BoundedQuotaProcessTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/CursorQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/GrokBotQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaSnapshotTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/MiniMaxQuotaTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaPublisherTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "QuotaCoreTests",
+      "moduleOutputPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCoreTests.swiftmodule",
+      "objects" : [
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AdditionalQuotaReaderTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AntigravityQuotaGroupsTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AntigravitySummaryReaderTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/BoundedQuotaProcessTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/CursorQuotaReaderTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/GrokBotQuotaReaderTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/LocalQuotaReaderTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/LocalQuotaSnapshotTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/MiniMaxQuotaTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/QuotaCoreTests.swift.o",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/QuotaPublisherTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx14.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j2",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "5",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "agent_bar"
+      ],
+      "outputFileMapPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AdditionalQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AntigravityQuotaGroupsTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AntigravitySummaryReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/BoundedQuotaProcessTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/CursorQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/GrokBotQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/LocalQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/LocalQuotaSnapshotTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/MiniMaxQuotaTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/QuotaCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/QuotaPublisherTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules/QuotaCoreTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AdditionalQuotaReaderTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravityQuotaGroupsTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravitySummaryReaderTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/BoundedQuotaProcessTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/CursorQuotaReaderTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/GrokBotQuotaReaderTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaReaderTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaSnapshotTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/MiniMaxQuotaTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaCoreTests.swift",
+        "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaPublisherTests.swift"
+      ],
+      "tempsPath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "AgentBar" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "AgentBar",
+      "-package-name",
+      "agent_bar",
+      "-c",
+      "/Users/jay/Code/agent-bar/Sources/AgentBar/AppDelegate.swift",
+      "/Users/jay/Code/agent-bar/Sources/AgentBar/MonitorModel.swift",
+      "/Users/jay/Code/agent-bar/Sources/AgentBar/PlatformLogo.swift",
+      "/Users/jay/Code/agent-bar/Sources/AgentBar/QuotaViews.swift",
+      "/Users/jay/Code/agent-bar/Sources/AgentBar/TokenStore.swift",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/DerivedSources/resource_bundle_accessor.swift",
+      "-I",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j2",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_AVAILABLE",
+      "-module-cache-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "AgentBar_main",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "agent_bar",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "AgentBarPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "AgentBarPackageTests",
+      "-package-name",
+      "agent_bar",
+      "-c",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j2",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/include/AgentBarPackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "agent_bar",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "QuotaCore" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "QuotaCore",
+      "-package-name",
+      "agent_bar",
+      "-c",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/AdditionalQuotaReader.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravityQuotaGroups.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravitySummaryReader.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/BoundedQuotaProcess.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/ClaudeCredentialSource.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/CursorQuotaReader.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/GrokBotQuotaReader.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaReader.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaSnapshot.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaClient.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaModels.swift",
+      "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaPublisher.swift",
+      "-I",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j2",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/include/QuotaCore-Swift.h",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "agent_bar",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "QuotaCoreTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "QuotaCoreTests",
+      "-package-name",
+      "agent_bar",
+      "-c",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AdditionalQuotaReaderTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravityQuotaGroupsTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravitySummaryReaderTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/BoundedQuotaProcessTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/CursorQuotaReaderTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/GrokBotQuotaReaderTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaReaderTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaSnapshotTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/MiniMaxQuotaTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaCoreTests.swift",
+      "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaPublisherTests.swift",
+      "-I",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx14.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j2",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "5",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "agent_bar",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "AgentBar" : [
+      "QuotaCore"
+    ],
+    "AgentBarPackageTests" : [
+      "QuotaCoreTests",
+      "QuotaCore"
+    ],
+    "QuotaCore" : [
+
+    ],
+    "QuotaCoreTests" : [
+      "QuotaCore"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar-entitlement.plist" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<entitlement-plist>"
+        },
+        {
+          "kind" : "virtual",
+          "name" : "<com.apple.security.get-task-allow>"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar-entitlement.plist"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/AppDelegate.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/MonitorModel.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/PlatformLogo.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/QuotaViews.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/AgentBar/TokenStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/DerivedSources/resource_bundle_accessor.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/sources"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.product/Objects.LinkFileList"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/sources"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AdditionalQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AntigravityQuotaGroupsTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/AntigravitySummaryReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/BoundedQuotaProcessTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/CursorQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/GrokBotQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/LocalQuotaReaderTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/LocalQuotaSnapshotTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/MiniMaxQuotaTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/QuotaCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/QuotaPublisherTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBarPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/AdditionalQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravityQuotaGroups.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravitySummaryReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/BoundedQuotaProcess.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/ClaudeCredentialSource.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/CursorQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/GrokBotQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaReader.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaSnapshot.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaClient.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaPublisher.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/sources"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AdditionalQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravityQuotaGroupsTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravitySummaryReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/BoundedQuotaProcessTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/CursorQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/GrokBotQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaReaderTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaSnapshotTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/MiniMaxQuotaTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaPublisherTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCoreTests.build/sources"
+    },
+    "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

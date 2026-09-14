@@ -1,0 +1,89 @@
+{
+  "": {
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/primary.swiftdeps"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/AdditionalQuotaReader.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AdditionalQuotaReader.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravityQuotaGroups.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravityQuotaGroups.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/AntigravitySummaryReader.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/AntigravitySummaryReader.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/BoundedQuotaProcess.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/BoundedQuotaProcess.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/ClaudeCredentialSource.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/ClaudeCredentialSource.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/CursorQuotaReader.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/CursorQuotaReader.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/GrokBotQuotaReader.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/GrokBotQuotaReader.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaReader.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaReader.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/LocalQuotaSnapshot.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/LocalQuotaSnapshot.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaClient.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaClient.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaModels.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaModels.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/QuotaCore/QuotaPublisher.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/QuotaPublisher.dia"
+  }
+}

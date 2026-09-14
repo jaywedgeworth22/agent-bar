@@ -1,0 +1,11 @@
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AdditionalQuotaReaderTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravityQuotaGroupsTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/AntigravitySummaryReaderTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/BoundedQuotaProcessTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/CursorQuotaReaderTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/GrokBotQuotaReaderTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaReaderTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/LocalQuotaSnapshotTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/MiniMaxQuotaTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaCoreTests.swift
+/Users/jay/Code/agent-bar/Tests/QuotaCoreTests/QuotaPublisherTests.swift

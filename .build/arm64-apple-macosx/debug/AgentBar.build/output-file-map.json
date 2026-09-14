@@ -1,0 +1,47 @@
+{
+  "": {
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/primary.swiftdeps"
+  },
+  "/Users/jay/Code/agent-bar/Sources/AgentBar/AppDelegate.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/AppDelegate.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/AgentBar/MonitorModel.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/MonitorModel.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/AgentBar/PlatformLogo.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/PlatformLogo.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/AgentBar/QuotaViews.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/QuotaViews.dia"
+  },
+  "/Users/jay/Code/agent-bar/Sources/AgentBar/TokenStore.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/TokenStore.dia"
+  },
+  "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/DerivedSources/resource_bundle_accessor.swift": {
+    "dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.d",
+    "object": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.swift.o",
+    "swiftmodule": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor~partial.swiftmodule",
+    "swift-dependencies": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.swiftdeps",
+    "diagnostics": "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/AgentBar.build/resource_bundle_accessor.dia"
+  }
+}
