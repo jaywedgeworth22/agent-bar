@@ -63,9 +63,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             item.button?.target = self
             item.button?.action = #selector(togglePopover)
-            item.button?.image = NSImage(systemSymbolName: "gauge.with.dots.needle.50percent", accessibilityDescription: "Usage Monitor")
-            item.button?.image?.isTemplate = true
-            item.button?.imagePosition = .imageLeading
             statusItem = item
         }
         NSApp.setActivationPolicy(mode == .menuBar ? .accessory : .regular)
@@ -80,9 +77,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func updateStatus() {
-        statusItem?.button?.title = " " + model.menuBarTitle
-        statusItem?.button?.toolTip = "Usage Monitor · " + model.menuBarDetail
-        statusItem?.button?.setAccessibilityLabel("Usage Monitor, " + model.menuBarDetail)
+        guard let button = statusItem?.button else { return }
+        let style = model.menuBarStyle
+        let title = model.menuBarTitle
+        let detail = model.menuBarDetail
+
+        // Configure image presence
+        if style == .percentOnly {
+            button.image = nil
+            button.imagePosition = .noImage
+        } else {
+            if button.image == nil {
+                button.image = NSImage(systemSymbolName: "gauge.with.dots.needle.50percent",
+                                      accessibilityDescription: "AgentBar")
+                button.image?.isTemplate = true
+            }
+            button.imagePosition = style == .symbolOnly ? .imageOnly : .imageLeading
+        }
+
+        // Configure title
+        if style == .symbolOnly {
+            button.title = ""
+        } else {
+            button.title = " \(title)"
+        }
+
+        button.toolTip = "AgentBar · \(detail)"
+        button.setAccessibilityLabel("AgentBar, \(detail)")
     }
 
     @objc private func togglePopover() {

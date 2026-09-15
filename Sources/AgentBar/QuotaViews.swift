@@ -359,6 +359,15 @@ struct QuotaPopover: View {
                         ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
                     }
                     Divider()
+                    Picker("Menu Bar Style", selection: $model.menuBarStyle) {
+                        ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    Picker("Menu Bar Quota", selection: $model.menuBarQuotaSelection) {
+                        ForEach(model.availableMenuBarQuotas, id: \.id) { item in
+                            Text(item.label).tag(item.id)
+                        }
+                    }
+                    Divider()
                     Button("Quit AgentBar") { NSApp.terminate(nil) }
                 } label: { Image(systemName: "ellipsis.circle") }.menuStyle(.borderlessButton).frame(width: 24)
             }.padding(12)
@@ -727,6 +736,36 @@ struct MonitorSettings: View {
                         ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
                     }.pickerStyle(.segmented)
                     Text("AgentBar runs in the menu bar, Dock, or both.").font(.caption).foregroundStyle(.secondary)
+                }.padding(8)
+            }
+
+            GroupBox("Menu Bar") {
+                VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Style").font(.caption.weight(.medium))
+                        Picker("Style", selection: $model.menuBarStyle) {
+                            ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Displayed Quota").font(.caption.weight(.medium))
+                        Picker("Displayed Quota", selection: $model.menuBarQuotaSelection) {
+                            ForEach(model.availableMenuBarQuotas, id: \.id) { item in
+                                Text(item.label).tag(item.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    Text(model.menuBarStyle == .symbolOnly
+                         ? "Only the symbol is visible in the menu bar — click it to view all your quotas."
+                         : "Shows \"\(model.menuBarTitle.isEmpty ? "..." : model.menuBarTitle)\" from \(model.menuBarDetail).")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }.padding(8)
             }
 
