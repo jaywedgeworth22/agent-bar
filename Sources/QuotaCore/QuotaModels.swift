@@ -482,3 +482,157 @@ public func quotaProviderVia(_ provider: String, providerKey: String? = nil, via
     if let via, !via.isEmpty { return via }
     return quotaProviderKey(provider, providerKey: providerKey, via: via) == "google-antigravity" ? "antigravity" : nil
 }
+
+// MARK: - Window Pacing & Timespan Calculations
+
+public struct WindowPacing: Equatable, Sendable {
+    public let durationSeconds: TimeInterval
+    public let elapsedSeconds: TimeInterval
+    public let timeElapsedPercent: Double // 0.0 - 100.0
+    public let quotaUsedPercent: Double // 0.0 - 100.0
+    public let isUnderCapPace: Bool
+    public let paceRatio: Double
+    public let timeElapsedLabel: String
+    public let resetLabel: String
+    public let paceDescription: String
+
+    public static func calculate(
+        windowToken: String?,
+        windowLabel: String,
+        resetAt: Date?,
+        remainingPercent: Double?,
+        now: Date = Date()
+    ) -> WindowPacing? {
+        guard let resetAt, let remainingPercent else { return nil }
+        guard let durationSeconds = parseDurationSeconds(token: windowToken, label: windowLabel), durationSeconds > 0 else {
+            return nil
+        }
+
+        let windowStart = resetAt.addingTimeInterval(-durationSeconds)
+        let elapsed = max(0, min(durationSeconds, now.timeIntervalSince(windowStart)))
+        let timePercent = min(100, max(0, (elapsed / durationSeconds) * 100))
+        let usedPercent = min(100, max(0, 100 - remainingPercent))
+
+        let remainingSeconds = max(0, resetAt.timeIntervalSince(now))
+        let isUnderCap = usedPercent <= (timePercent + 5.0) // 5% grace buffer
+
+        let timeElapsedLabel: String
+        if durationSeconds >= 86400 * 6 { // Weekly / 7-day
+            let elapsedDays = Int(ceil(elapsed / 86400))
+            let totalDays = Int(round(durationSeconds / 86400))
+            timeElapsedLabel = "Day \(max(1, elapsedDays)) of \(totalDays)"
+        } else if durationSeconds >= 86400 { // Daily / 24-hour
+            let elapsedHours = Int(elapsed / 3600)
+            timeElapsedLabel = "\(elapsedHours)h of 24h elapsed"
+        } else { // 5-hour, 1-hour, etc.
+            let elapsedHours = Int(elapsed / 3600)
+            let elapsedMins = Int((elapsed.truncatingRemainder(dividingBy: 3600)) / 60)
+            if elapsedHours > 0 {
+                timeElapsedLabel = "\(elapsedHours)h \(elapsedMins)m elapsed"
+            } else {
+                timeElapsedLabel = "\(elapsedMins)m elapsed"
+            }
+        }
+
+        let resetLabel: String
+        let remMinutes = max(1, Int(ceil(remainingSeconds / 60)))
+        if remMinutes >= 1440 {
+            resetLabel = "Resets in \(remMinutes / 1440)d \((remMinutes % 1440) / 60)h"
+        } else if remMinutes >= 60 {
+            resetLabel = "Resets in \(remMinutes / 60)h \(remMinutes % 60)m"
+        } else {
+            resetLabel = "Resets in \(remMinutes)m"
+        }
+
+        let paceRatio = timePercent > 0 ? (usedPercent / timePercent) : 1.0
+        let paceDescription: String
+        if usedPercent == 0 {
+            paceDescription = "0% used · Fully available"
+        } else if isUnderCap {
+            paceDescription = "On track · \(Int(usedPercent.rounded()))% used at \(Int(timePercent.rounded()))% of window"
+        } else {
+            paceDescription = "Ahead of pace · \(Int(usedPercent.rounded()))% used at \(Int(timePercent.rounded()))% of window"
+        }
+
+        return WindowPacing(
+            durationSeconds: durationSeconds,
+            elapsedSeconds: elapsed,
+            timeElapsedPercent: timePercent,
+            quotaUsedPercent: usedPercent,
+            isUnderCapPace: isUnderCap,
+            paceRatio: paceRatio,
+            timeElapsedLabel: timeElapsedLabel,
+            resetLabel: resetLabel,
+            paceDescription: paceDescription
+        )
+    }
+
+    public static func parseDurationSeconds(token: String?, label: String) -> TimeInterval? {
+        let combined = "\(token ?? "") \(label)".lowercased()
+        if combined.contains("weekly") || combined.contains("7-day") || combined.contains("7d") || combined.contains("7 day") {
+            return 7 * 86400
+        }
+        if combined.contains("monthly") || combined.contains("30d") || combined.contains("30-day") || combined.contains("month") {
+            return 30 * 86400
+        }
+        if combined.contains("daily") || combined.contains("24h") || combined.contains("24-hour") || combined.contains("1d") || combined.contains("day") {
+            return 86400
+        }
+        if combined.contains("5-hour") || combined.contains("5h") || combined.contains("5 hour") {
+            return 5 * 3600
+        }
+        if combined.contains("1-hour") || combined.contains("1h") || combined.contains("1 hour") {
+            return 3600
+        }
+        if combined.contains("2-hour") || combined.contains("2h") {
+            return 2 * 3600
+        }
+        if combined.contains("3-hour") || combined.contains("3h") {
+            return 3 * 3600
+        }
+        if combined.contains("6-hour") || combined.contains("6h") {
+            return 6 * 3600
+        }
+        if combined.contains("12-hour") || combined.contains("12h") {
+            return 12 * 3600
+        }
+        return nil
+    }
+}
+
+public extension QuotaWindowSnapshot {
+    func pacing(now: Date = Date()) -> WindowPacing? {
+        WindowPacing.calculate(
+            windowToken: window.window,
+            windowLabel: window.label,
+            resetAt: resetAt,
+            remainingPercent: remainingPercent,
+            now: now
+        )
+    }
+}
+
+// MARK: - Platform Custom Metadata
+
+public struct PlatformCustomInfo: Codable, Equatable, Sendable {
+    public var customSubtitle: String
+    public var planName: String
+    public var costUsd: String
+    public var renewalDateText: String
+    public var showCostAndRenewal: Bool
+
+    public init(
+        customSubtitle: String = "",
+        planName: String = "",
+        costUsd: String = "",
+        renewalDateText: String = "",
+        showCostAndRenewal: Bool = false
+    ) {
+        self.customSubtitle = customSubtitle
+        self.planName = planName
+        self.costUsd = costUsd
+        self.renewalDateText = renewalDateText
+        self.showCostAndRenewal = showCostAndRenewal
+    }
+}
+

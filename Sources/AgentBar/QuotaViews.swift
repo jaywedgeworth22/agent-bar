@@ -8,6 +8,7 @@ private enum Palette {
     static let background = Color(red: 0.96, green: 0.97, blue: 0.97)
     static let warning = Color(red: 0.66, green: 0.36, blue: 0.02)
     static let danger = Color(red: 0.75, green: 0.20, blue: 0.23)
+    static let pacingTrack = Color(red: 0.15, green: 0.35, blue: 0.65)
 }
 
 struct MonitorDashboard: View {
@@ -50,20 +51,32 @@ struct MonitorDashboard: View {
                             Spacer()
                             Text("Percent remaining").font(.caption).foregroundStyle(.secondary)
                         }
-                        if model.viewLayout == .allAtOnce && selected == "all" {
+                        if model.viewLayout == .summary && selected == "all" {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), alignment: .top)], alignment: .leading, spacing: 12) {
                                 ForEach(visibleSections, id: \.providerKey) { section in
-                                    CompactDashboardPlatformCard(section: section, now: model.now, issue: model.issues[section.providerKey])
+                                    CompactDashboardPlatformCard(
+                                        section: section,
+                                        now: model.now,
+                                        issue: model.issues[section.providerKey],
+                                        customInfo: model.platformCustomInfo[section.providerKey]
+                                    )
                                 }
                             }
                         } else {
                             LazyVGrid(columns: selected == "all" ? [GridItem(.adaptive(minimum: 290), alignment: .top)] : [GridItem(.flexible())], alignment: .leading, spacing: 16) {
                                 ForEach(visibleSections, id: \.providerKey) { section in
-                                    PlatformCard(section: section, now: model.now, issue: model.issues[section.providerKey], compact: false, wide: selected != "all")
+                                    PlatformCard(
+                                        section: section,
+                                        now: model.now,
+                                        issue: model.issues[section.providerKey],
+                                        compact: false,
+                                        wide: selected != "all",
+                                        customInfo: model.platformCustomInfo[section.providerKey]
+                                    )
                                 }
                             }
                         }
-                        Text("Each window is an independent cap.  A model offered through Antigravity uses the Antigravity subscription.  Unreported limits stay unavailable.")
+                        Text("Each window is an independent cap. A model offered through Antigravity uses the Antigravity subscription. Unreported limits stay unavailable.")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(26)
@@ -168,6 +181,7 @@ struct PlatformCard: View {
     let issue: String?
     let compact: Bool
     var wide = false
+    var customInfo: PlatformCustomInfo? = nil
     @State private var expanded = false
     @State private var videoExpanded = false
 
@@ -181,6 +195,23 @@ struct PlatformCard: View {
         expanded ? primaryWindows : Array(primaryWindows.prefix(4))
     }
 
+    private var subtitleText: String? {
+        if let custom = customInfo, !custom.customSubtitle.isEmpty {
+            return custom.customSubtitle
+        }
+        if let custom = customInfo, custom.showCostAndRenewal {
+            let parts = [custom.planName, custom.costUsd, custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"].filter { !$0.isEmpty }
+            if !parts.isEmpty { return parts.joined(separator: " · ") }
+        }
+        if section.via == "antigravity" {
+            return "Antigravity subscription"
+        }
+        if let plan = section.windows.compactMap(\.window.planName).first, !plan.isEmpty {
+            return plan
+        }
+        return nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 12 : 16) {
             HStack(spacing: 10) {
@@ -188,8 +219,8 @@ struct PlatformCard: View {
                     .frame(width: compact ? 28 : 36, height: compact ? 28 : 36)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(section.providerLabel).font(.headline)
-                    if section.via == "antigravity" {
-                        Text("Antigravity subscription").font(.caption2).foregroundStyle(.secondary)
+                    if let sub = subtitleText {
+                        Text(sub).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
@@ -248,8 +279,6 @@ struct PlatformCard: View {
         .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.black.opacity(0.07)))
     }
-
-
 }
 
 private struct QuotaRow: View {
@@ -278,7 +307,62 @@ private struct QuotaRow: View {
                         .font(.system(size: 9)).foregroundStyle(.secondary)
                 }
             }
-            if let remaining = snapshot.remainingPercent {
+
+            if let pacing = snapshot.pacing(now: now), !compact {
+                // Timespan backdrop & usage bar comparison in Detailed view
+                VStack(alignment: .leading, spacing: 5) {
+                    GeometryReader { geometry in
+                        let width = geometry.size.width
+                        let timeWidth = max(0, min(width, width * CGFloat(pacing.timeElapsedPercent) / 100))
+                        let usedWidth = max(0, min(width, width * CGFloat(pacing.quotaUsedPercent) / 100))
+
+                        ZStack(alignment: .leading) {
+                            // Total window track
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.black.opacity(0.06))
+
+                            // Time elapsed backdrop zone
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Palette.pacingTrack.opacity(0.14))
+                                .frame(width: timeWidth)
+
+                            // Time progress pin
+                            Rectangle()
+                                .fill(Palette.pacingTrack.opacity(0.75))
+                                .frame(width: 2, height: 10)
+                                .offset(x: max(0, min(width - 2, timeWidth - 1)))
+
+                            // Quota used fill bar
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(pacing.isUnderCapPace ? Palette.accent : Palette.warning)
+                                .frame(width: usedWidth, height: 5)
+                        }
+                    }
+                    .frame(height: 10)
+
+                    HStack(spacing: 6) {
+                        HStack(spacing: 3) {
+                            Circle().fill(Palette.pacingTrack.opacity(0.8)).frame(width: 5, height: 5)
+                            Text(pacing.timeElapsedLabel)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        HStack(spacing: 3) {
+                            Image(systemName: pacing.isUnderCapPace ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(pacing.isUnderCapPace ? Palette.accent : Palette.warning)
+                            Text(pacing.paceDescription)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(pacing.isUnderCapPace ? Palette.accent : Palette.warning)
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            } else if let remaining = snapshot.remainingPercent {
+                // Standard single progress bar
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.black.opacity(0.06))
@@ -287,15 +371,18 @@ private struct QuotaRow: View {
                 }.frame(height: 5)
                 .accessibilityLabel("\(Int(remaining.rounded())) percent remaining")
             }
+
             if let remaining = snapshot.window.absoluteRemaining, let limit = snapshot.window.absoluteLimit,
                remaining.isFinite, limit.isFinite, remaining >= 0, limit > 0, let unit = snapshot.window.quotaUnit {
                 Text("\(remaining.formatted(.number.precision(.fractionLength(0...1)))) of \(limit.formatted(.number.precision(.fractionLength(0...1)))) \(unit) remaining")
                     .font(.caption2).foregroundStyle(.secondary)
             }
+
             HStack(spacing: 4) {
                 Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
                 Text(resetCountdown(snapshot.resetAt, now: now))
             }.font(.caption2).foregroundStyle(.secondary)
+
             if let reset = snapshot.resetAt, !compact {
                 Text(reset.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute().timeZone()))
                     .font(.system(size: 10)).foregroundStyle(.secondary)
@@ -324,28 +411,55 @@ struct QuotaPopover: View {
                     Text("AgentBar").font(.headline)
                     Text("\(model.reportingCount) platforms reporting").font(.caption2).foregroundStyle(.secondary)
                 }
-                Spacer()
+                Spacer(minLength: 4)
                 Picker("Layout", selection: $model.viewLayout) {
                     ForEach(QuotaViewLayout.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 145)
-                Button { model.refresh() } label: { Image(systemName: "arrow.clockwise") }
-                    .disabled(model.isRefreshing).help("Refresh Quotas").accessibilityLabel("Refresh Quotas")
-                Button(action: openSettings) { Image(systemName: "gearshape") }.help("Settings").accessibilityLabel("Settings")
+                .frame(width: 140)
+
+                Button { model.refresh() } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.isRefreshing)
+                .help("Refresh Quotas")
+                .accessibilityLabel("Refresh Quotas")
+
+                Button(action: openSettings) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .medium))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
+                .accessibilityLabel("Settings")
             }.padding(14)
             Divider()
             ScrollView {
                 VStack(spacing: 8) {
                     if model.isRefreshing { ProgressView("Refreshing quotas…").font(.caption).padding(4) }
                     if let error = model.serverError { Text(error).font(.caption).foregroundStyle(Palette.warning) }
-                    if model.viewLayout == .allAtOnce {
+                    if model.viewLayout == .summary {
                         ForEach(model.sections.sorted { !$0.windows.isEmpty && $1.windows.isEmpty }, id: \.providerKey) { section in
-                            CompactPopoverPlatformRow(section: section, now: model.now, issue: model.issues[section.providerKey])
+                            CompactPopoverPlatformRow(
+                                section: section,
+                                now: model.now,
+                                issue: model.issues[section.providerKey],
+                                customInfo: model.platformCustomInfo[section.providerKey]
+                            )
                         }
                     } else {
                         ForEach(model.sections.sorted { !$0.windows.isEmpty && $1.windows.isEmpty }, id: \.providerKey) { section in
-                            PlatformCard(section: section, now: model.now, issue: model.issues[section.providerKey], compact: true)
+                            PlatformCard(
+                                section: section,
+                                now: model.now,
+                                issue: model.issues[section.providerKey],
+                                compact: true,
+                                customInfo: model.platformCustomInfo[section.providerKey]
+                            )
                         }
                     }
                 }.padding(10)
@@ -369,7 +483,14 @@ struct QuotaPopover: View {
                     }
                     Divider()
                     Button("Quit AgentBar") { NSApp.terminate(nil) }
-                } label: { Image(systemName: "ellipsis.circle") }.menuStyle(.borderlessButton).frame(width: 24)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Palette.ink)
+                }
+                .menuIndicator(.hidden)
+                .menuStyle(.borderlessButton)
+                .frame(width: 28, height: 28)
             }.padding(12)
         }
         .frame(width: 410, height: 600)
@@ -414,9 +535,24 @@ struct CompactPopoverPlatformRow: View {
     let section: QuotaPlatformSection
     let now: Date
     let issue: String?
+    var customInfo: PlatformCustomInfo? = nil
 
     private var primaryWindows: [QuotaWindowSnapshot] {
         section.windows.filter { !$0.window.isSupplementaryVideoQuota }
+    }
+
+    private var subtitleText: String? {
+        if let custom = customInfo, !custom.customSubtitle.isEmpty {
+            return custom.customSubtitle
+        }
+        if let custom = customInfo, custom.showCostAndRenewal {
+            let parts = [custom.planName, custom.costUsd, custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"].filter { !$0.isEmpty }
+            if !parts.isEmpty { return parts.joined(separator: " · ") }
+        }
+        if section.via == "antigravity" {
+            return "Antigravity"
+        }
+        return nil
     }
 
     var body: some View {
@@ -428,10 +564,11 @@ struct CompactPopoverPlatformRow: View {
                 Text(section.providerLabel)
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
-                if section.via == "antigravity" {
-                    Text("Antigravity")
+                if let sub = subtitleText {
+                    Text(sub)
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
             .frame(width: 88, alignment: .leading)
@@ -510,9 +647,24 @@ struct CompactDashboardPlatformCard: View {
     let section: QuotaPlatformSection
     let now: Date
     let issue: String?
+    var customInfo: PlatformCustomInfo? = nil
 
     private var primaryWindows: [QuotaWindowSnapshot] {
         section.windows.filter { !$0.window.isSupplementaryVideoQuota }
+    }
+
+    private var subtitleText: String? {
+        if let custom = customInfo, !custom.customSubtitle.isEmpty {
+            return custom.customSubtitle
+        }
+        if let custom = customInfo, custom.showCostAndRenewal {
+            let parts = [custom.planName, custom.costUsd, custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"].filter { !$0.isEmpty }
+            if !parts.isEmpty { return parts.joined(separator: " · ") }
+        }
+        if section.via == "antigravity" {
+            return "Antigravity subscription"
+        }
+        return nil
     }
 
     var body: some View {
@@ -524,8 +676,8 @@ struct CompactDashboardPlatformCard: View {
                     Text(section.providerLabel)
                         .font(.system(size: 13, weight: .bold))
                         .lineLimit(1)
-                    if section.via == "antigravity" {
-                        Text("Antigravity subscription").font(.system(size: 9)).foregroundStyle(.secondary)
+                    if let sub = subtitleText {
+                        Text(sub).font(.system(size: 9)).foregroundStyle(.secondary)
                     }
                 }
                 Spacer()
@@ -611,6 +763,9 @@ struct MonitorSettings: View {
     @State private var server = false
     @State private var endpoint = ""
     @State private var token = ""
+    @State private var testingPull = false
+    @State private var testPullMessage: String?
+    @State private var testPullSuccess = false
 
     // Sync / Push state
     @State private var syncEnabled = false
@@ -620,6 +775,14 @@ struct MonitorSettings: View {
     @State private var testingPush = false
     @State private var testResultMessage: String?
     @State private var testResultSuccess = false
+
+    // Platforms customization
+    @State private var selectedPlatformKey: String = "google-antigravity"
+    @State private var customSubtitleInput: String = ""
+    @State private var planNameInput: String = ""
+    @State private var costUsdInput: String = ""
+    @State private var renewalDateInput: String = ""
+    @State private var showCostAndRenewalInput: Bool = false
 
     @State private var message: String?
     @State private var isError = false
@@ -635,8 +798,9 @@ struct MonitorSettings: View {
 
             Picker("", selection: $selectedTab) {
                 Text("General").tag(0)
-                Text("Sync & Share").tag(1)
-                Text("Pull Fleet").tag(2)
+                Text("Platforms").tag(1)
+                Text("Sync & Share").tag(2)
+                Text("Pull Fleet").tag(3)
             }
             .pickerStyle(.segmented)
 
@@ -644,6 +808,8 @@ struct MonitorSettings: View {
                 if selectedTab == 0 {
                     generalTab
                 } else if selectedTab == 1 {
+                    platformsTab
+                } else if selectedTab == 2 {
                     syncAndShareTab
                 } else {
                     pullFleetTab
@@ -659,7 +825,7 @@ struct MonitorSettings: View {
             Divider()
 
             HStack {
-                if selectedTab == 1 && model.hasSavedSyncToken {
+                if selectedTab == 2 && model.hasSavedSyncToken {
                     Button("Forget Sync Token", role: .destructive) {
                         saving = true
                         Task {
@@ -675,7 +841,7 @@ struct MonitorSettings: View {
                             }
                         }
                     }
-                } else if selectedTab == 2 && model.hasSavedToken {
+                } else if selectedTab == 3 && model.hasSavedToken {
                     Button("Forget Read Token", role: .destructive) {
                         saving = true
                         Task {
@@ -701,6 +867,7 @@ struct MonitorSettings: View {
                         do {
                             try await model.saveConnection(local: local, server: server, endpoint: endpoint, token: token)
                             try await model.saveSyncSettings(enabled: syncEnabled, endpoint: syncEndpoint, token: syncToken, format: syncFormat)
+                            saveCurrentPlatformCustomInfo()
                             token = ""
                             syncToken = ""
                             message = "Settings saved successfully."
@@ -717,7 +884,7 @@ struct MonitorSettings: View {
             if saving { ProgressView("Saving settings…").font(.caption) }
         }
         .disabled(saving)
-        .padding(24).frame(width: 600, height: 520).tint(Palette.accent).preferredColorScheme(.light)
+        .padding(24).frame(width: 620, height: 560).tint(Palette.accent).preferredColorScheme(.light)
         .onAppear {
             local = model.localEnabled
             server = model.serverEnabled
@@ -725,6 +892,7 @@ struct MonitorSettings: View {
             syncEnabled = model.syncEnabled
             syncEndpoint = model.syncEndpoint
             syncFormat = model.syncFormat
+            loadPlatformCustomInfo(for: selectedPlatformKey)
         }
     }
 
@@ -762,8 +930,8 @@ struct MonitorSettings: View {
                     }
 
                     Text(model.menuBarStyle == .symbolOnly
-                         ? "Only the symbol is visible in the menu bar — click it to view all your quotas."
-                         : "Shows \"\(model.menuBarTitle.isEmpty ? "..." : model.menuBarTitle)\" from \(model.menuBarDetail).")
+                         ? "Only the icon is visible in the menu bar (matching the targeted agent) — click it to view all quotas."
+                         : "Shows \"\(model.menuBarTitle.isEmpty ? "..." : model.menuBarTitle)\" with the agent icon from \(model.menuBarDetail).")
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }.padding(8)
@@ -779,6 +947,133 @@ struct MonitorSettings: View {
                 }.padding(8)
             }
         }
+    }
+
+    private var platformsTab: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            GroupBox("Platform Display Order & Subscription Details") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Select a platform to rearrange order or customize its subscription text, cost, and renewal date.")
+                        .font(.caption).foregroundStyle(.secondary)
+
+                    HStack(alignment: .top, spacing: 14) {
+                        // Platform List with Reorder Buttons
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Platforms (Top to Bottom)").font(.caption.weight(.semibold))
+                            ScrollView {
+                                VStack(spacing: 4) {
+                                    ForEach(model.sections, id: \.providerKey) { section in
+                                        HStack(spacing: 6) {
+                                            PlatformLogo(providerKey: section.providerKey, size: 16)
+                                            Text(section.providerLabel)
+                                                .font(.system(size: 11, weight: selectedPlatformKey == section.providerKey ? .bold : .regular))
+                                                .lineLimit(1)
+                                            Spacer()
+                                            Button {
+                                                model.movePlatformUp(providerKey: section.providerKey)
+                                            } label: { Image(systemName: "chevron.up").font(.system(size: 9)) }
+                                            .buttonStyle(.plain)
+
+                                            Button {
+                                                model.movePlatformDown(providerKey: section.providerKey)
+                                            } label: { Image(systemName: "chevron.down").font(.system(size: 9)) }
+                                            .buttonStyle(.plain)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 5)
+                                        .background(selectedPlatformKey == section.providerKey ? Palette.accent.opacity(0.12) : Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: 6))
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            saveCurrentPlatformCustomInfo()
+                                            selectedPlatformKey = section.providerKey
+                                            loadPlatformCustomInfo(for: section.providerKey)
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(width: 210, height: 210)
+
+                            Button("Reset Default Order") {
+                                model.resetPlatformOrder()
+                            }
+                            .font(.caption2)
+                        }
+
+                        Divider()
+
+                        // Custom Subtitle & Subscription Info
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Edit: \(model.sections.first(where: { $0.providerKey == selectedPlatformKey })?.providerLabel ?? selectedPlatformKey)")
+                                .font(.caption.weight(.semibold))
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Custom Subtitle (replaces default text)").font(.caption2)
+                                TextField("e.g. Pro tier, Custom text, etc.", text: $customSubtitleInput)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.caption)
+                            }
+
+                            Divider()
+
+                            Toggle("Display Plan, Cost & Renewal", isOn: $showCostAndRenewalInput)
+                                .font(.caption)
+
+                            HStack(spacing: 8) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Plan Name").font(.caption2)
+                                    TextField("e.g. Max 20x, Pro", text: $planNameInput)
+                                        .textFieldStyle(.roundedBorder)
+                                        .font(.caption)
+                                        .disabled(!showCostAndRenewalInput)
+                                }
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Cost").font(.caption2)
+                                    TextField("e.g. $20/mo", text: $costUsdInput)
+                                        .textFieldStyle(.roundedBorder)
+                                        .font(.caption)
+                                        .disabled(!showCostAndRenewalInput)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Renewal Date").font(.caption2)
+                                TextField("e.g. Oct 12 or Monthly", text: $renewalDateInput)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.caption)
+                                    .disabled(!showCostAndRenewalInput)
+                            }
+                        }
+                    }
+                }.padding(8)
+            }
+        }
+    }
+
+    private func loadPlatformCustomInfo(for key: String) {
+        if let existing = model.platformCustomInfo[key] {
+            customSubtitleInput = existing.customSubtitle
+            planNameInput = existing.planName
+            costUsdInput = existing.costUsd
+            renewalDateInput = existing.renewalDateText
+            showCostAndRenewalInput = existing.showCostAndRenewal
+        } else {
+            customSubtitleInput = ""
+            planNameInput = ""
+            costUsdInput = ""
+            renewalDateInput = ""
+            showCostAndRenewalInput = false
+        }
+    }
+
+    private func saveCurrentPlatformCustomInfo() {
+        let info = PlatformCustomInfo(
+            customSubtitle: customSubtitleInput,
+            planName: planNameInput,
+            costUsd: costUsdInput,
+            renewalDateText: renewalDateInput,
+            showCostAndRenewal: showCostAndRenewalInput
+        )
+        model.setCustomInfo(for: selectedPlatformKey, info: info)
     }
 
     private var syncAndShareTab: some View {
@@ -800,7 +1095,7 @@ struct MonitorSettings: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Ingest Token (Stored in Keychain)").font(.caption.weight(.medium))
-                        SecureField(model.hasSavedSyncToken ? "Token saved · enter to replace" : "Server Ingest Token (e.g. USAGE_INGEST_TOKEN)", text: $syncToken)
+                        SecureField(model.hasSavedSyncToken ? "Token saved · enter to replace" : "Server Ingest Token (USAGE_INGEST_TOKEN)", text: $syncToken)
                             .textFieldStyle(.roundedBorder)
                             .disabled(!syncEnabled)
                     }
@@ -860,12 +1155,44 @@ struct MonitorSettings: View {
 
                     Divider()
 
-                    TextField("Quota Endpoint", text: $endpoint).textFieldStyle(.roundedBorder)
-                        .accessibilityLabel("Quota Endpoint").disabled(!server)
-                    SecureField(model.hasSavedToken ? "Token saved · enter to replace" : "Usage Monitor read token", text: $token)
-                        .textFieldStyle(.roundedBorder).disabled(!server).accessibilityLabel("Usage Monitor read token")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Quota Endpoint").font(.caption.weight(.medium))
+                        TextField("https://usage.jays.services/api/quota-windows", text: $endpoint)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("Quota Endpoint").disabled(!server)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Read Token (Stored in Keychain)").font(.caption.weight(.medium))
+                        SecureField(model.hasSavedToken ? "Token saved · enter to replace" : "Usage Monitor read token (USAGE_READ_TOKEN)", text: $token)
+                            .textFieldStyle(.roundedBorder).disabled(!server).accessibilityLabel("Usage Monitor read token")
+                    }
+
+                    HStack(spacing: 12) {
+                        Button("Test Read Connection") {
+                            testingPull = true
+                            testPullMessage = nil
+                            Task {
+                                defer { testingPull = false }
+                                let (ok, msg) = await model.testPullConnection(endpoint: endpoint, token: token)
+                                testPullSuccess = ok
+                                testPullMessage = msg
+                            }
+                        }
+                        .disabled(!server || testingPull)
+
+                        if testingPull {
+                            ProgressView().scaleEffect(0.7)
+                        } else if let testPullMessage {
+                            Text(testPullMessage)
+                                .font(.caption)
+                                .foregroundStyle(testPullSuccess ? Palette.accent : Palette.danger)
+                                .lineLimit(1)
+                        }
+                    }
+
                     Text("The read token stays in this Mac’s Keychain. Refreshes every 5 minutes while running.")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }.padding(8)
             }
         }

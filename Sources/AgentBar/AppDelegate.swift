@@ -81,17 +81,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let style = model.menuBarStyle
         let title = model.menuBarTitle
         let detail = model.menuBarDetail
+        let target = model.menuBarTargetSnapshot
 
         // Configure image presence
         if style == .percentOnly {
             button.image = nil
             button.imagePosition = .noImage
         } else {
-            if button.image == nil {
-                button.image = NSImage(systemSymbolName: "gauge.with.dots.needle.50percent",
-                                      accessibilityDescription: "AgentBar")
-                button.image?.isTemplate = true
+            let providerKey = target?.window.canonicalProviderKey ?? "auto"
+            var iconImage: NSImage?
+            if target != nil {
+                iconImage = PlatformLogoImage.menuBarImage(providerKey: providerKey)
             }
+            if iconImage == nil {
+                let symbolName = target != nil
+                    ? PlatformLogoImage.fallbackSymbolName(for: providerKey)
+                    : "gauge.with.dots.needle.50percent"
+                iconImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: "AgentBar")
+                iconImage?.isTemplate = true
+            }
+            button.image = iconImage
             button.imagePosition = style == .symbolOnly ? .imageOnly : .imageLeading
         }
 

@@ -30,12 +30,12 @@ public enum MenuBarStyle: String, CaseIterable, Identifiable {
 }
 
 public enum QuotaViewLayout: String, CaseIterable, Identifiable {
-    case allAtOnce = "allAtOnce"
+    case summary = "allAtOnce"
     case detailed = "detailed"
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .allAtOnce: return "All at Once"
+        case .summary: return "Summary"
         case .detailed: return "Detailed"
         }
     }
@@ -54,6 +54,16 @@ final class MonitorModel: ObservableObject {
     }
     @Published var viewLayout: QuotaViewLayout {
         didSet { defaults.set(viewLayout.rawValue, forKey: "quotaViewLayout") }
+    }
+    @Published var platformOrder: [String] {
+        didSet { defaults.set(platformOrder, forKey: "platformOrder") }
+    }
+    @Published var platformCustomInfo: [String: PlatformCustomInfo] {
+        didSet {
+            if let data = try? JSONEncoder().encode(platformCustomInfo) {
+                defaults.set(data, forKey: "platformCustomInfo")
+            }
+        }
     }
     @Published private(set) var response = QuotaResponse(generatedAt: "")
     @Published private(set) var isRefreshing = false
@@ -92,7 +102,14 @@ final class MonitorModel: ObservableObject {
         displayMode = DisplayMode(rawValue: defaults.string(forKey: "displayMode") ?? "") ?? .both
         menuBarStyle = MenuBarStyle(rawValue: defaults.string(forKey: "menuBarStyle") ?? "") ?? .symbolAndPercent
         menuBarQuotaSelection = defaults.string(forKey: "menuBarQuotaSelection") ?? "auto_lowest_active"
-        viewLayout = QuotaViewLayout(rawValue: defaults.string(forKey: "quotaViewLayout") ?? "") ?? .allAtOnce
+        viewLayout = QuotaViewLayout(rawValue: defaults.string(forKey: "quotaViewLayout") ?? "") ?? .summary
+        platformOrder = defaults.stringArray(forKey: "platformOrder") ?? []
+        if let customData = defaults.data(forKey: "platformCustomInfo"),
+           let decoded = try? JSONDecoder().decode([String: PlatformCustomInfo].self, from: customData) {
+            platformCustomInfo = decoded
+        } else {
+            platformCustomInfo = [:]
+        }
         localEnabled = defaults.object(forKey: "localEnabled") as? Bool ?? true
         serverEnabled = defaults.bool(forKey: "serverEnabled")
         let savedEndpoint = defaults.string(forKey: "endpoint") ?? "https://usage.jays.services/api/quota-windows"
@@ -105,7 +122,20 @@ final class MonitorModel: ObservableObject {
         hasSavedSyncToken = defaults.bool(forKey: "hasSavedSyncToken")
     }
 
-    var sections: [QuotaPlatformSection] { response.platformSections(now: now) }
+    var sections: [QuotaPlatformSection] {
+        let base = response.platformSections(now: now)
+        if platformOrder.isEmpty { return base }
+        var orderMap: [String: Int] = [:]
+        for (idx, key) in platformOrder.enumerated() {
+            orderMap[key] = idx
+        }
+        return base.sorted { (a, b) -> Bool in
+            let idxA = orderMap[a.providerKey] ?? 999
+            let idxB = orderMap[b.providerKey] ?? 999
+            if idxA != idxB { return idxA < idxB }
+            return a.providerLabel < b.providerLabel
+        }
+    }
     var freshWindows: [QuotaWindowSnapshot] {
         sections.flatMap(\.windows).filter {
             $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota && issues[$0.window.canonicalProviderKey] == nil
@@ -178,7 +208,50 @@ final class MonitorModel: ObservableObject {
         clockTimer?.invalidate()
     }
 
+    func movePlatformUp(providerKey: String) {
+        var current = platformOrder.isEmpty ? sections.map(\.providerKey) : platformOrder
+        guard let idx = current.firstIndex(of: providerKey), idx > 0 else { return }
+        current.swapAt(idx, idx - 1)
+        platformOrder = current
+    }
+
+    func movePlatformDown(providerKey: String) {
+        var current = platformOrder.isEmpty ? sections.map(\.providerKey) : platformOrder
+        guard let idx = current.firstIndex(of: providerKey), idx < current.count - 1 else { return }
+        current.swapAt(idx, idx + 1)
+        platformOrder = current
+    }
+
+    func resetPlatformOrder() {
+        platformOrder = []
+    }
+
+    func setCustomInfo(for providerKey: String, info: PlatformCustomInfo) {
+        platformCustomInfo[providerKey] = info
+    }
+
     // MARK: - Server Pull Settings
+
+    func testPullConnection(endpoint input: String, token inputToken: String) async -> (success: Bool, message: String) {
+        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: value), QuotaClient.isAllowedEndpoint(url) else {
+            return (false, "Invalid endpoint URL (must be HTTPS or localhost).")
+        }
+        let cleanToken = inputToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: value, service: TokenStore.readService)
+        guard let token = resolvedToken, !token.isEmpty else {
+            return (false, "Please provide a valid Read Token.")
+        }
+        do {
+            let client = try QuotaClient(endpoint: url, token: token)
+            let res = try await client.fetch()
+            let count = res.windows.count
+            return (true, "Connected! Received \(count) quota window\(count == 1 ? "" : "s").")
+        } catch {
+            let desc = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return (false, desc)
+        }
+    }
 
     func saveConnection(local: Bool, server: Bool, endpoint input: String, token: String) async throws {
         let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
