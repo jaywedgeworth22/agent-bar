@@ -14,6 +14,21 @@ enum DisplayMode: String, CaseIterable, Identifiable {
     }
 }
 
+public enum MenuBarStyle: String, CaseIterable, Identifiable {
+    case symbolOnly = "symbolOnly"
+    case symbolAndPercent = "symbolAndPercent"
+    case percentOnly = "percentOnly"
+
+    public var id: String { rawValue }
+    public var title: String {
+        switch self {
+        case .symbolOnly: return "Symbol Only"
+        case .symbolAndPercent: return "Symbol & Percentage"
+        case .percentOnly: return "Percentage Only"
+        }
+    }
+}
+
 public enum QuotaViewLayout: String, CaseIterable, Identifiable {
     case allAtOnce = "allAtOnce"
     case detailed = "detailed"
@@ -30,6 +45,12 @@ public enum QuotaViewLayout: String, CaseIterable, Identifiable {
 final class MonitorModel: ObservableObject {
     @Published var displayMode: DisplayMode {
         didSet { defaults.set(displayMode.rawValue, forKey: "displayMode") }
+    }
+    @Published var menuBarStyle: MenuBarStyle {
+        didSet { defaults.set(menuBarStyle.rawValue, forKey: "menuBarStyle") }
+    }
+    @Published var menuBarQuotaSelection: String {
+        didSet { defaults.set(menuBarQuotaSelection, forKey: "menuBarQuotaSelection") }
     }
     @Published var viewLayout: QuotaViewLayout {
         didSet { defaults.set(viewLayout.rawValue, forKey: "quotaViewLayout") }
@@ -69,6 +90,8 @@ final class MonitorModel: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         displayMode = DisplayMode(rawValue: defaults.string(forKey: "displayMode") ?? "") ?? .both
+        menuBarStyle = MenuBarStyle(rawValue: defaults.string(forKey: "menuBarStyle") ?? "") ?? .symbolAndPercent
+        menuBarQuotaSelection = defaults.string(forKey: "menuBarQuotaSelection") ?? "auto_lowest_active"
         viewLayout = QuotaViewLayout(rawValue: defaults.string(forKey: "quotaViewLayout") ?? "") ?? .allAtOnce
         localEnabled = defaults.object(forKey: "localEnabled") as? Bool ?? true
         serverEnabled = defaults.bool(forKey: "serverEnabled")
@@ -91,15 +114,49 @@ final class MonitorModel: ObservableObject {
     var reportingCount: Int { Set(freshWindows.map { $0.window.canonicalProviderKey }).count }
     var nearCapCount: Int { freshWindows.filter { ($0.remainingPercent ?? 100) <= 20 }.count }
     var nextReset: Date? { freshWindows.compactMap(\.resetAt).filter { $0 > now }.min() }
-    var menuBarTitle: String {
-        guard let lowest = freshWindows.compactMap(\.remainingPercent).min() else { return "AB —" }
-        return "AB \(Int(lowest.rounded()))%"
-    }
-    var menuBarDetail: String {
-        guard let lowest = freshWindows.min(by: { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) }) else {
-            return "No current quota report"
+
+    /// All individual quotas available for pinning to the menu bar.
+    var availableMenuBarQuotas: [(id: String, label: String)] {
+        var result: [(id: String, label: String)] = [
+            (id: "auto_lowest_active", label: "Lowest Active (> 0%)"),
+            (id: "auto_lowest", label: "Lowest (All)"),
+        ]
+        for section in sections {
+            let windows = section.windows.filter { $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota }
+            for snapshot in windows {
+                let label = "\(section.providerLabel) · \(snapshot.window.label)"
+                result.append((id: snapshot.window.id, label: label))
+            }
         }
-        return "\(sections.first { $0.providerKey == lowest.window.canonicalProviderKey }?.providerLabel ?? lowest.window.provider), \(lowest.window.label): \(Int((lowest.remainingPercent ?? 0).rounded()))% remaining"
+        return result
+    }
+
+    /// The window that should drive the menu bar display.
+    var menuBarTargetSnapshot: QuotaWindowSnapshot? {
+        switch menuBarQuotaSelection {
+        case "auto_lowest_active":
+            let nonZero = freshWindows.filter { ($0.remainingPercent ?? 0) > 0 }
+            return (nonZero.isEmpty ? freshWindows : nonZero)
+                .min(by: { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) })
+        case "auto_lowest":
+            return freshWindows.min(by: { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) })
+        default:
+            return freshWindows.first { $0.window.id == menuBarQuotaSelection }
+                ?? freshWindows.min(by: { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) })
+        }
+    }
+
+    var menuBarTitle: String {
+        guard menuBarStyle != .symbolOnly else { return "" }
+        guard let target = menuBarTargetSnapshot, let pct = target.remainingPercent else { return "—" }
+        return "\(Int(pct.rounded()))%"
+    }
+
+    var menuBarDetail: String {
+        guard let target = menuBarTargetSnapshot else { return "No current quota report" }
+        let providerLabel = sections.first { $0.providerKey == target.window.canonicalProviderKey }?.providerLabel ?? target.window.provider
+        let pct = target.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—"
+        return "\(providerLabel), \(target.window.label): \(pct) remaining"
     }
 
     func start() {
