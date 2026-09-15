@@ -90,9 +90,13 @@ final class QuotaPublisherTests: XCTestCase {
     func testBuildUsageMonitorV2Payload() throws {
         let publisher = QuotaPublisher()
         let windows = makeSampleWindows()
-        let data = try publisher.buildUsageMonitorV2Payload(windows: windows, occurredAtIso: "2026-09-14T19:00:00Z")
+        let data = try publisher.buildUsageMonitorV2Payload(windows: windows, occurredAtIso: "2026-09-14T19:00:00Z", machineName: "Test-Mac")
         
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(json["schemaVersion"] as? Int, 2)
+        XCTAssertEqual(json["producerId"] as? String, "agent-bar")
+        XCTAssertEqual(json["producerInstanceId"] as? String, "Test-Mac")
+
         let events = try XCTUnwrap(json["events"] as? [[String: Any]])
         XCTAssertEqual(events.count, 2)
 
@@ -106,10 +110,11 @@ final class QuotaPublisherTests: XCTestCase {
         XCTAssertEqual(first["tier"] as? String, "Claude Max")
 
         let meta = try XCTUnwrap(first["metadata"] as? [String: Any])
-        XCTAssertEqual(meta["remainingPercent"] as? Double, 85.0)
+        XCTAssertEqual(meta["bucketId"] as? String, "5h")
         XCTAssertEqual(meta["quotaWindow"] as? String, "5h")
         XCTAssertEqual(meta["resetAt"] as? String, "2026-09-14T22:00:00Z")
         XCTAssertEqual(meta["source"] as? String, "agent-bar")
+        XCTAssertEqual(meta["usedPercent"] as? Double, 15.0)
     }
 
     func testBuildGenericWebhookPayload() throws {

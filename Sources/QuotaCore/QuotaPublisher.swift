@@ -104,6 +104,7 @@ public actor QuotaPublisher {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("2", forHTTPHeaderField: "x-usage-telemetry-version")
         request.setValue("agent-bar/1.0", forHTTPHeaderField: "User-Agent")
 
         if let token = token?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
@@ -146,20 +147,26 @@ public actor QuotaPublisher {
         }
     }
 
-    public nonisolated func buildUsageMonitorV2Payload(windows: [QuotaWindow], occurredAtIso: String) throws -> Data {
+    public nonisolated func buildUsageMonitorV2Payload(windows: [QuotaWindow], occurredAtIso: String, machineName: String? = nil) throws -> Data {
+        let machine = machineName ?? Host.current().localizedName ?? "Mac"
         let events: [[String: Any]] = windows.compactMap { window in
             guard let remaining = window.boundedRemainingPercent ?? window.remainingPercent else { return nil }
-            let seriesKey = "\(window.canonicalProviderKey):\(window.label.lowercased())"
-            let eventId = "agentbar-\(window.canonicalProviderKey)-\(abs(seriesKey.hashValue))-\(Int(Date().timeIntervalSince1970))"
+            let seriesKey = window.resetAt ?? "\(occurredAtIso.prefix(13)):00"
+            let bucketId = window.window ?? window.label.lowercased().replacingOccurrences(of: " ", with: "-")
+            let eventId = "subq:\(window.canonicalProviderKey):\(bucketId):\(seriesKey)"
 
             var meta: [String: Any] = [
-                "remainingPercent": remaining,
+                "bucketId": bucketId,
                 "isExhausted": window.isExhausted || remaining <= 0,
+                "remainingUnknown": false,
+                "scale": "percent_0_100",
                 "source": "agent-bar"
             ]
             if let resetAt = window.resetAt { meta["resetAt"] = resetAt }
             if let w = window.window { meta["quotaWindow"] = w }
             if let modelId = window.modelId { meta["modelId"] = modelId }
+            if let plan = window.planName { meta["planType"] = plan }
+            meta["usedPercent"] = max(0, min(100, 100 - remaining))
 
             var event: [String: Any] = [
                 "eventId": eventId,
@@ -178,7 +185,12 @@ public actor QuotaPublisher {
             return event
         }
 
-        let root: [String: Any] = ["events": events]
+        let root: [String: Any] = [
+            "schemaVersion": 2,
+            "producerId": "agent-bar",
+            "producerInstanceId": machine,
+            "events": events
+        ]
         return try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
     }
 

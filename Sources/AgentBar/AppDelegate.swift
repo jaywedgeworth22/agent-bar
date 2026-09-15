@@ -3,10 +3,10 @@ import Combine
 import SwiftUI
 
 @main
-enum UsageMonitorMain {
+enum AgentBarMain {
     @MainActor
     static func main() {
-        if let existing = NSRunningApplication.runningApplications(withBundleIdentifier: "com.jays.usage-monitor.mac")
+        if let existing = NSRunningApplication.runningApplications(withBundleIdentifier: "com.jays.agent-bar.mac")
             .first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier && !$0.isTerminated }) {
             existing.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
             return
@@ -121,14 +121,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1060, height: 740),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
-            window.title = "Usage Monitor"
+            window.title = "AgentBar"
             window.minSize = NSSize(width: 800, height: 540)
             window.isReleasedWhenClosed = false
             window.isRestorable = false
             window.delegate = self
             window.contentView = NSHostingView(rootView:
                 MonitorDashboard(model: model, openSettings: { [weak self] in self?.showSettings() }))
-            window.setFrameAutosaveName("UsageMonitorMainWindow")
+            window.setFrameAutosaveName("AgentBarMainWindow")
             window.center()
             monitorWindow = window
         }
@@ -141,7 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 510),
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "Usage Monitor Settings"
+            window.title = "AgentBar Settings"
             window.isReleasedWhenClosed = false
             window.isRestorable = false
             window.contentView = NSHostingView(rootView: MonitorSettings(model: model))
@@ -164,12 +164,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             item.target = self
             appMenu.addItem(item)
         }
-        add("Open Usage Monitor", #selector(showMonitor), "1")
+        add("Open AgentBar", #selector(showMonitor), "1")
         add("Quick Quotas", #selector(togglePopover), "2")
         add("Settings…", #selector(showSettings), ",")
         add("Refresh Quotas", #selector(refresh), "r")
         appMenu.addItem(.separator())
-        add("Quit Usage Monitor", #selector(quit), "q")
+        add("Quit AgentBar", #selector(quit), "q")
         appItem.submenu = appMenu
         menu.addItem(appItem)
         let editItem = NSMenuItem()
