@@ -153,7 +153,8 @@ public actor QuotaPublisher {
             guard let remaining = window.boundedRemainingPercent ?? window.remainingPercent else { return nil }
             let seriesKey = window.resetAt ?? "\(occurredAtIso.prefix(13)):00"
             let bucketId = window.window ?? window.label.lowercased().replacingOccurrences(of: " ", with: "-")
-            let eventId = "subq:\(window.canonicalProviderKey):\(bucketId):\(seriesKey)"
+            let readingTime = window.occurredAt.isEmpty ? occurredAtIso : window.occurredAt
+            let eventId = "subq:\(window.canonicalProviderKey):\(bucketId):\(seriesKey):\(readingTime)"
 
             var meta: [String: Any] = [
                 "bucketId": bucketId,
@@ -178,7 +179,7 @@ public actor QuotaPublisher {
                 "confidence": "actual",
                 "limit": 100,
                 "credits": remaining,
-                "occurredAt": occurredAtIso,
+                "occurredAt": readingTime,
                 "metadata": meta
             ]
             if let plan = window.planName { event["tier"] = plan }
