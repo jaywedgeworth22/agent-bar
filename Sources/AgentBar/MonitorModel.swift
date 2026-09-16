@@ -412,7 +412,10 @@ final class MonitorModel: ObservableObject {
 
             // Publish local snapshot to BotFleet on disk
             do {
-                if useLocal { try LocalQuotaSnapshot.write(windows: self.localWindows, now: self.now) }
+                // `issues` is still the local read's own map here — the server
+                // failure below is merged in afterwards and must never reach a
+                // file that promises local-only readings.
+                if useLocal { try LocalQuotaSnapshot.write(windows: self.localWindows, issues: self.issues, now: self.now) }
                 else { try LocalQuotaSnapshot.remove() }
                 self.handoffError = nil
             } catch {

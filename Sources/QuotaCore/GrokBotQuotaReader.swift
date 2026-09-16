@@ -107,8 +107,6 @@ private func grokBotWindow(_ root: [String: Any], observedAt: Date) -> QuotaWind
     let remaining = 100 - boundedUsed
     let reset = grokBotTimestamp(root["nextResetTimestampUtc"] ?? root["next_reset_timestamp_utc"])
     let plan = grokBotSafeString(root["grokPlanLabel"] ?? root["grok_plan_label"])
-    let exhausted = remaining == 0
-
     return QuotaWindow(
         id: "local-mac:grok-bot:weekly",
         provider: "Grok Bot",
@@ -120,15 +118,11 @@ private func grokBotWindow(_ root: [String: Any], observedAt: Date) -> QuotaWind
         remainingPercent: remaining,
         planName: plan,
         remainingUnknown: false,
-        isExhausted: exhausted,
         resetAt: reset,
         window: "weekly",
-        status: exhausted ? .exhausted : remaining < 20 ? .nearCap : .available,
-        skip: exhausted,
-        skipReason: exhausted ? "quota exhausted" : nil,
         occurredAt: grokBotISOFormatter.string(from: observedAt),
         source: "Cursor DashboardService"
-    )
+    ).normalizedForExport()
 }
 
 private func grokBotUnknownWindow(observedAt: Date) -> QuotaWindow {

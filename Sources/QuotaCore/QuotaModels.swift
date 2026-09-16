@@ -11,6 +11,15 @@ public enum QuotaWindowStatus: String, Codable, Sendable {
         let value = try decoder.singleValueContainer().decode(String.self)
         self = QuotaWindowStatus(rawValue: value) ?? .unknown
     }
+
+    /// The single rule that turns a bounded remaining percentage into a status.
+    /// Every reader and every export path uses this one derivation so a window
+    /// can never claim "unknown" while reporting a real percentage.
+    public static func derived(remainingPercent: Double?) -> QuotaWindowStatus {
+        guard let value = remainingPercent else { return .unknown }
+        if value == 0 { return .exhausted }
+        return value < 20 ? .nearCap : .available
+    }
 }
 
 public struct SkipModelType: Codable, Equatable, Sendable {
@@ -154,6 +163,24 @@ public struct QuotaWindow: Codable, Equatable, Sendable {
     public var boundedRemainingPercent: Double? {
         guard !remainingUnknown, let value = remainingPercent, value.isFinite else { return nil }
         return min(100, max(0, value))
+    }
+
+    /// Restates the derived fields from the bounded percentage so every window
+    /// leaving this app carries the same contract.  A reader that builds a
+    /// window without a status — the Antigravity grouped summary, for one —
+    /// would otherwise publish `unknown` at zero remaining, and a consumer that
+    /// trusts `status` or `isExhausted` would route to an exhausted pool.
+    /// Applying this twice is a no-op.
+    public func normalizedForExport() -> QuotaWindow {
+        var copy = self
+        let bounded = boundedRemainingPercent
+        copy.remainingPercent = bounded
+        copy.remainingUnknown = bounded == nil
+        copy.isExhausted = bounded == 0
+        copy.status = QuotaWindowStatus.derived(remainingPercent: bounded)
+        copy.skip = copy.isExhausted
+        copy.skipReason = copy.isExhausted ? "quota exhausted" : nil
+        return copy
     }
 }
 

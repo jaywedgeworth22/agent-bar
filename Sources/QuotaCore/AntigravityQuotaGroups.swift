@@ -28,14 +28,19 @@ public enum AntigravityQuotaGroups {
                 value.providerLabel = "Antigravity"
                 value.via = "antigravity"
                 value.modelId = nil
-                value.modelType = nil
+                // No single model id survives the pooling, but the pool itself
+                // is the family a consumer can route on, so publish it.
+                value.modelType = family
                 value.label = "\(title) · \(period == "5h" ? "5-hour" : "Weekly")"
                 value.window = period
                 // Model-specific units cannot establish a shared absolute cap.
                 value.absoluteRemaining = nil
                 value.absoluteLimit = nil
                 value.quotaUnit = nil
-                result.append(value)
+                // The grouped summary builds its windows without a status, so
+                // a pool at zero would otherwise publish "unknown" and a
+                // consumer would route to it.  Restate the derived fields.
+                result.append(value.normalizedForExport())
             }
         }
         return result
