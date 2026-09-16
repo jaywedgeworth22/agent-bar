@@ -328,21 +328,28 @@ final class MonitorModel: ObservableObject {
         try await saveSyncSettings(enabled: false, endpoint: syncEndpoint, token: "", format: syncFormat)
     }
 
-    func testAndPushSync() async -> (success: Bool, message: String) {
-        guard let url = URL(string: syncEndpoint), QuotaClient.isAllowedEndpoint(url) else {
-            return (false, "Invalid endpoint URL.")
+    func testAndPushSync(endpoint input: String = "", token inputToken: String = "", format inputFormat: QuotaSyncFormat? = nil) async -> (success: Bool, message: String) {
+        let endpointValue = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let targetEndpoint = !endpointValue.isEmpty ? endpointValue : syncEndpoint
+        guard let url = URL(string: targetEndpoint), QuotaClient.isAllowedEndpoint(url) else {
+            return (false, "Invalid endpoint URL (must be HTTPS or localhost).")
         }
         let windowsToPush = localWindows.isEmpty ? AntigravityQuotaGroups.normalize(await Self.readLocalSources().windows) : localWindows
         guard !windowsToPush.isEmpty else {
             return (false, "No local agent quotas available to push.")
         }
-        let token = await TokenStore.read(server: syncEndpoint, service: TokenStore.syncService)
+        let cleanToken = inputToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: targetEndpoint, service: TokenStore.syncService)
+        guard let token = resolvedToken, !token.isEmpty else {
+            return (false, "Please provide a valid Ingest Token (USAGE_INGEST_TOKEN).")
+        }
+        let targetFormat = inputFormat ?? syncFormat
         do {
             let result = try await publisher.publish(
                 windows: windowsToPush,
                 to: url,
                 token: token,
-                format: syncFormat
+                format: targetFormat
             )
             self.lastSyncTime = Date()
             self.lastSyncStatus = result.message

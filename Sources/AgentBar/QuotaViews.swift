@@ -1111,7 +1111,11 @@ struct MonitorSettings: View {
                             testResultMessage = nil
                             Task {
                                 defer { testingPush = false }
-                                let (ok, msg) = await model.testAndPushSync()
+                                let (ok, msg) = await model.testAndPushSync(
+                                    endpoint: syncEndpoint,
+                                    token: syncToken,
+                                    format: syncFormat
+                                )
                                 testResultSuccess = ok
                                 testResultMessage = msg
                             }
@@ -1124,9 +1128,12 @@ struct MonitorSettings: View {
                             Text(testResultMessage)
                                 .font(.caption)
                                 .foregroundStyle(testResultSuccess ? Palette.accent : Palette.danger)
-                                .lineLimit(1)
+                                .lineLimit(2)
                         }
                     }
+
+                    Text("Push uses USAGE_INGEST_TOKEN (write permission for POST /api/ingest/usage). Stored in Keychain.")
+                        .font(.caption2).foregroundStyle(.secondary)
 
                     if let lastSyncTime = model.lastSyncTime {
                         HStack {
@@ -1191,7 +1198,7 @@ struct MonitorSettings: View {
                         }
                     }
 
-                    Text("The read token stays in this Mac’s Keychain. Refreshes every 5 minutes while running.")
+                    Text("Pull uses USAGE_READ_TOKEN (read permission for GET /api/quota-windows). Stored in Keychain. Refreshes every 5 minutes while running.")
                         .font(.caption2).foregroundStyle(.secondary)
                 }.padding(8)
             }

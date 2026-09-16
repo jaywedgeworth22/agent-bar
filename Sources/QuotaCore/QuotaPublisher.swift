@@ -152,13 +152,26 @@ public actor QuotaPublisher {
         let events: [[String: Any]] = windows.compactMap { window in
             guard let remaining = window.boundedRemainingPercent ?? window.remainingPercent else { return nil }
             let seriesKey = window.resetAt ?? "\(occurredAtIso.prefix(13)):00"
-            let bucketId = window.window ?? window.label.lowercased().replacingOccurrences(of: " ", with: "-")
+            let bucketId: String = {
+                if let modelId = window.modelId, !modelId.isEmpty {
+                    return "\(modelId)-\(window.window ?? "window")"
+                }
+                if !window.id.isEmpty && window.id.contains(":") {
+                    let parts = window.id.split(separator: ":").map(String.init)
+                    if parts.count >= 2 {
+                        return parts.dropFirst().joined(separator: "-")
+                    }
+                }
+                return window.window ?? window.label.lowercased().replacingOccurrences(of: " ", with: "-")
+            }()
             let readingTime = window.occurredAt.isEmpty ? occurredAtIso : window.occurredAt
             let eventId = "subq:\(window.canonicalProviderKey):\(bucketId):\(seriesKey):\(readingTime)"
+            let clampedRemaining = round(remaining * 100.0) / 100.0
+            let usedPercent = round(max(0, min(100, 100.0 - clampedRemaining)) * 100.0) / 100.0
 
             var meta: [String: Any] = [
                 "bucketId": bucketId,
-                "isExhausted": window.isExhausted || remaining <= 0,
+                "isExhausted": window.isExhausted || clampedRemaining <= 0,
                 "remainingUnknown": false,
                 "scale": "percent_0_100",
                 "source": "agent-bar"
@@ -167,7 +180,7 @@ public actor QuotaPublisher {
             if let w = window.window { meta["quotaWindow"] = w }
             if let modelId = window.modelId { meta["modelId"] = modelId }
             if let plan = window.planName { meta["planType"] = plan }
-            meta["usedPercent"] = max(0, min(100, 100 - remaining))
+            meta["usedPercent"] = usedPercent
 
             var event: [String: Any] = [
                 "eventId": eventId,
@@ -178,7 +191,7 @@ public actor QuotaPublisher {
                 "billingMode": "actual",
                 "confidence": "actual",
                 "limit": 100,
-                "credits": remaining,
+                "credits": clampedRemaining,
                 "occurredAt": readingTime,
                 "metadata": meta
             ]
