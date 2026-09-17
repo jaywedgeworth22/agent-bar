@@ -178,6 +178,8 @@ struct SettingsSourcesFleetPage: View {
     @State private var pushEnabled = false
     @State private var pullEnabled = false
     @State private var pulling = false
+    @State private var reauthorizingPush = false
+    @State private var reauthorizingPull = false
     @State private var pullMessage: String?
     @State private var pullSucceeded = false
 
@@ -207,6 +209,7 @@ struct SettingsSourcesFleetPage: View {
             pushEnabled = model.syncEnabled
             pullEnabled = model.serverEnabled
         }
+        .task { await model.refreshSavedTokenStates() }
         .onChange(of: model.syncEnabled) { _, newValue in pushEnabled = newValue }
         .onChange(of: model.serverEnabled) { _, newValue in pullEnabled = newValue }
     }
@@ -270,6 +273,21 @@ struct SettingsSourcesFleetPage: View {
         .accessibilityElement(children: .combine)
     }
 
+
+/// Shown under a group's header when a token is on file that this build cannot
+/// read.  Plain words, because the alternative the owner actually met was a
+/// pull that failed with nothing to act on.
+private struct ReauthorizeCaption: View {
+    var body: some View {
+        Text("This build cannot read the saved token yet." + sentenceGap
+             + "Re-authorize it, or paste the token again.")
+            .font(.system(size: 11))
+            .foregroundStyle(Theme.warning)
+            .textCase(nil)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
     // MARK: Share This Mac
 
     private var shareSection: some View {
@@ -297,6 +315,21 @@ struct SettingsSourcesFleetPage: View {
                 Text("Unsaved changes").font(.system(size: 11)).foregroundStyle(Theme.warning)
             }
             HStack(spacing: 10) {
+                if model.syncTokenState.needsReauthorization {
+                    Button("Re-Authorize Saved Token") {
+                        reauthorizingPush = true
+                        pushMessage = nil
+                        Task {
+                            defer { reauthorizingPush = false }
+                            let (ok, message) = await model.reauthorizeSyncToken()
+                            pushSucceeded = ok
+                            pushMessage = message
+                        }
+                    }
+                    .disabled(reauthorizingPush)
+                    .help("Re-Authorize Saved Token")
+                    .accessibilityLabel("Re-Authorize Saved Token")
+                }
                 if model.hasSavedSyncToken {
                     Button("Forget Ingest Token", role: .destructive) {
                         Task {
@@ -337,6 +370,9 @@ struct SettingsSourcesFleetPage: View {
                 }
                 // The last push failure lives with the group that owns it, so a
                 // token the server rejects is visible without pressing anything.
+                if model.syncTokenState.needsReauthorization {
+                    ReauthorizeCaption()
+                }
                 if let pushError = model.lastSyncError {
                     Text("Last push failed." + sentenceGap + pushError)
                         .font(.system(size: 11))
@@ -399,6 +435,21 @@ struct SettingsSourcesFleetPage: View {
                 Text("Unsaved changes").font(.system(size: 11)).foregroundStyle(Theme.warning)
             }
             HStack(spacing: 10) {
+                if model.readTokenState.needsReauthorization {
+                    Button("Re-Authorize Saved Token") {
+                        reauthorizingPull = true
+                        pullMessage = nil
+                        Task {
+                            defer { reauthorizingPull = false }
+                            let (ok, message) = await model.reauthorizeReadToken()
+                            pullSucceeded = ok
+                            pullMessage = message
+                        }
+                    }
+                    .disabled(reauthorizingPull)
+                    .help("Re-Authorize Saved Token")
+                    .accessibilityLabel("Re-Authorize Saved Token")
+                }
                 if model.hasSavedToken {
                     Button("Forget Read Token", role: .destructive) {
                         Task {
@@ -449,6 +500,9 @@ struct SettingsSourcesFleetPage: View {
                     .foregroundStyle(.secondary)
                     .textCase(nil)
             }
+                if model.readTokenState.needsReauthorization {
+                    ReauthorizeCaption()
+                }
                 if let pullError = model.serverError {
                     Text("Last pull failed." + sentenceGap + pullError)
                         .font(.system(size: 11))

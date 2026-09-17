@@ -111,12 +111,19 @@ final class MonitorModel: ObservableObject {
     @Published private(set) var serverEnabled: Bool
     @Published private(set) var endpoint: String
     @Published private(set) var hasSavedToken: Bool
+    /// Whether this build can actually read the saved Read Token.  A rebuild
+    /// under a different code identity leaves the item on disk and unreadable,
+    /// and the owner needs to be told that in words rather than left with a
+    /// pull that quietly fails.
+    @Published private(set) var readTokenState: SavedTokenState = .none
 
     // Remote Sync / Push Sharing
     @Published private(set) var syncEnabled: Bool
     @Published private(set) var syncEndpoint: String
     @Published private(set) var syncFormat: QuotaSyncFormat
     @Published private(set) var hasSavedSyncToken: Bool
+    /// The same, for the Ingest Token.
+    @Published private(set) var syncTokenState: SavedTokenState = .none
     @Published private(set) var lastSyncTime: Date?
     @Published private(set) var lastSyncStatus: String?
     /// The last push failure, kept separately from `lastSyncStatus` so Settings
@@ -379,6 +386,47 @@ final class MonitorModel: ObservableObject {
         }
     }
 
+    // MARK: - Saved Token Availability
+
+    /// Re-reads both saved tokens silently and records what this build can see.
+    /// Prompt-free by construction: the interactive read lives behind the
+    /// Re-Authorize Saved Token button and is never reached from here.
+    func refreshSavedTokenStates() async {
+        let readOK = hasSavedToken && !endpoint.isEmpty
+            ? await TokenStore.read(server: endpoint, service: TokenStore.readService) != nil
+            : false
+        let syncOK = hasSavedSyncToken && !syncEndpoint.isEmpty
+            ? await TokenStore.read(server: syncEndpoint, service: TokenStore.syncService) != nil
+            : false
+        readTokenState = SavedTokenState.resolve(hasSavedFlag: hasSavedToken, silentReadSucceeded: readOK)
+        syncTokenState = SavedTokenState.resolve(hasSavedFlag: hasSavedSyncToken, silentReadSucceeded: syncOK)
+    }
+
+    /// One interactive read, so macOS can show its own panel and the owner can
+    /// press Always Allow.  On success the pull is refreshed immediately.
+    func reauthorizeReadToken() async -> (success: Bool, message: String) {
+        let token = await TokenStore.readAllowingInteraction(server: endpoint, service: TokenStore.readService)
+        let ok = !(token.map(sanitizedToken(_:)) ?? "").isEmpty
+        readTokenState = SavedTokenState.resolve(hasSavedFlag: hasSavedToken, silentReadSucceeded: ok)
+        if ok {
+            serverError = nil
+            refresh()
+            return (true, "The saved token is readable again.")
+        }
+        return (false, "The saved token is still unavailable." + sentenceGap + "Paste the token again.")
+    }
+
+    func reauthorizeSyncToken() async -> (success: Bool, message: String) {
+        let token = await TokenStore.readAllowingInteraction(server: syncEndpoint, service: TokenStore.syncService)
+        let ok = !(token.map(sanitizedToken(_:)) ?? "").isEmpty
+        syncTokenState = SavedTokenState.resolve(hasSavedFlag: hasSavedSyncToken, silentReadSucceeded: ok)
+        if ok {
+            lastSyncError = nil
+            return (true, "The saved token is readable again.")
+        }
+        return (false, "The saved token is still unavailable." + sentenceGap + "Paste the token again.")
+    }
+
     // MARK: - Server Pull Settings
 
     func testPullConnection(endpoint input: String, token inputToken: String) async -> (success: Bool, message: String) {
@@ -421,6 +469,7 @@ final class MonitorModel: ObservableObject {
         serverEnabled = server
         endpoint = value
         hasSavedToken = saved
+        readTokenState = SavedTokenState.resolve(hasSavedFlag: saved, silentReadSucceeded: savedToken != nil)
         defaults.set(saved, forKey: "hasSavedToken")
         defaults.set(local, forKey: "localEnabled")
         defaults.set(server, forKey: "serverEnabled")
@@ -437,6 +486,7 @@ final class MonitorModel: ObservableObject {
     func forgetServer() async throws {
         try await TokenStore.delete(server: endpoint, service: TokenStore.readService)
         hasSavedToken = false
+        readTokenState = .none
         defaults.set(false, forKey: "hasSavedToken")
         try await saveConnection(local: localEnabled, server: false, endpoint: endpoint, token: "")
     }
@@ -459,6 +509,7 @@ final class MonitorModel: ObservableObject {
         syncEndpoint = value
         syncFormat = format
         hasSavedSyncToken = saved
+        syncTokenState = SavedTokenState.resolve(hasSavedFlag: saved, silentReadSucceeded: savedToken != nil)
 
         defaults.set(enabled, forKey: "syncEnabled")
         defaults.set(value, forKey: "syncEndpoint")
@@ -473,6 +524,7 @@ final class MonitorModel: ObservableObject {
     func forgetSyncServer() async throws {
         try await TokenStore.delete(server: syncEndpoint, service: TokenStore.syncService)
         hasSavedSyncToken = false
+        syncTokenState = .none
         defaults.set(false, forKey: "hasSavedSyncToken")
         try await saveSyncSettings(enabled: false, endpoint: syncEndpoint, token: "", format: syncFormat)
     }
@@ -542,9 +594,13 @@ final class MonitorModel: ObservableObject {
             async let localRead: LocalQuotaResult? = useLocal ? Self.readLocalSources() : nil
             var newServer: QuotaResponse?
             var failure: String?
+            // The pull's own read doubles as the availability check, so the
+            // caption below the group header costs no extra Keychain traffic.
+            var savedTokenReadable = false
             if useServer {
                 let token = await TokenStore.read(server: currentEndpoint, service: TokenStore.readService)
                     .map(sanitizedToken(_:))
+                savedTokenReadable = !(token ?? "").isEmpty
                 do {
                     guard let url = URL(string: currentEndpoint) else { throw QuotaClientError.invalidEndpoint }
                     guard let token else { throw TokenStore.Failure.read }
@@ -558,6 +614,10 @@ final class MonitorModel: ObservableObject {
             }
             let local = await localRead
             guard !Task.isCancelled, let self, self.revision == generation else { return }
+            if useServer {
+                self.readTokenState = SavedTokenState.resolve(hasSavedFlag: self.hasSavedToken,
+                                                              silentReadSucceeded: savedTokenReadable)
+            }
             self.now = Date()
             self.lastChecked = self.now
             if let local {
