@@ -333,8 +333,15 @@ struct AllPlatformsPage: View {
     private var localSections: [DisplaySection] {
         matching.filter { model.originByProvider[$0.providerKey] != .fleet }
     }
-    private var fleetSections: [DisplaySection] {
-        matching.filter { model.originByProvider[$0.providerKey] == .fleet }
+    /// Fleet rows, filtered by the same search box, grouped by machine.
+    private var fleetGroups: [FleetGroup] {
+        model.fleetGroups.map { group in
+            FleetGroup(id: group.id,
+                       title: group.title,
+                       windowCount: group.windowCount,
+                       rows: group.rows.filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) })
+        }
+        .filter { !$0.rows.isEmpty }
     }
     private var compact: Bool { model.viewLayout == .summary }
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: compact ? 240 : 290), alignment: .top)] }
@@ -459,14 +466,25 @@ struct AllPlatformsPage: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
-                if fleetSections.isEmpty {
+                if fleetGroups.isEmpty {
                     Text("No other machines have reported yet.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 } else {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                        ForEach(fleetSections) { row in
-                            card(row, origin: .fleet)
+                    ForEach(fleetGroups) { group in
+                        // A group header per machine: the pull carries an
+                        // origin per window and nothing finer.
+                        HStack {
+                            Text(group.title).font(.system(size: 12, weight: .semibold))
+                            Spacer()
+                            Text("\(group.windowCount) window\(group.windowCount == 1 ? "" : "s")")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                            ForEach(group.rows) { row in
+                                card(row, origin: .fleet)
+                            }
                         }
                     }
                 }
@@ -475,15 +493,12 @@ struct AllPlatformsPage: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var fleetTitle: String {
-        let labels = model.fleetSourceLabels
-        return labels.isEmpty ? "Fleet" : "Fleet · \(labels.joined(separator: ", "))"
-    }
+    private var fleetTitle: String { "Fleet" }
 
     private func card(_ row: DisplaySection, origin: QuotaOrigin) -> some View {
         PlatformCard(row: row,
                      now: model.now,
-                     issue: model.issues[row.providerKey],
+                     issue: origin == .fleet ? nil : model.issues[row.providerKey],
                      compact: compact,
                      wide: false,
                      origin: origin,

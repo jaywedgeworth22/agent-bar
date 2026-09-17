@@ -9,12 +9,8 @@ struct GlancePopover: View {
     @ObservedObject var model: MonitorModel
     var openConsole: (ConsolePage) -> Void
 
-    private var localSections: [DisplaySection] {
-        model.displaySections.filter { model.originByProvider[$0.providerKey] != .fleet }
-    }
-    private var fleetSections: [DisplaySection] {
-        model.displaySections.filter { model.originByProvider[$0.providerKey] == .fleet }
-    }
+    private var localSections: [DisplaySection] { model.displaySections }
+    private var fleetGroups: [FleetGroup] { model.fleetGroups }
     private var showsFleetSetup: Bool { !model.syncEnabled && !model.serverEnabled }
     private var hasAnySource: Bool { model.localEnabled || model.serverEnabled }
 
@@ -75,18 +71,22 @@ struct GlancePopover: View {
                           issue: model.issues[row.providerKey],
                           origin: .local)
             }
-            if !fleetSections.isEmpty {
+            if !fleetGroups.isEmpty {
                 Spacer().frame(height: 12)
                 HStack(alignment: .top, spacing: 0) {
                     Rectangle().fill(Theme.fleet)
                         .frame(width: 2)
                     VStack(alignment: .leading, spacing: 0) {
-                        groupHeader(fleetGroupTitle)
-                        ForEach(fleetSections) { row in
-                            GlanceRow(row: row,
-                                      now: model.now,
-                                      issue: model.issues[row.providerKey],
-                                      origin: .fleet)
+                        // One header per machine, so a row always says which
+                        // machine reported it.
+                        ForEach(fleetGroups) { group in
+                            groupHeader("FLEET · \(group.title.uppercased())")
+                            ForEach(group.rows) { row in
+                                GlanceRow(row: row,
+                                          now: model.now,
+                                          issue: nil,
+                                          origin: .fleet)
+                            }
                         }
                     }
                 }
@@ -98,11 +98,6 @@ struct GlancePopover: View {
                     .padding(.horizontal, Metrics.glanceGutter)
             }
         }
-    }
-
-    private var fleetGroupTitle: String {
-        let labels = model.fleetSourceLabels
-        return labels.isEmpty ? "FLEET" : "FLEET · \(labels.joined(separator: ", "))"
     }
 
     private func groupHeader(_ title: String) -> some View {

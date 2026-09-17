@@ -59,6 +59,59 @@ enum QuotaOrigin: Equatable, Sendable {
     case local, fleet
 }
 
+/// Pulled windows that share one origin, before they are turned into rows.
+struct FleetWindowGroup: Equatable {
+    let id: String
+    let title: String
+    let windows: [QuotaWindow]
+}
+
+/// One machine's worth of fleet rows.
+struct FleetGroup: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let windowCount: Int
+    let rows: [DisplaySection]
+}
+
+/// The origin a pulled window came from.
+///
+/// The quota endpoint carries no host, producer or device field — only `source`
+/// and `sourceApp` — so that is the best machine identifier available, and
+/// inventing a richer one would mean inventing the data behind it.  If the
+/// payload ever grows a machine field, this is the one place to teach.
+enum FleetOrigin {
+    static func identity(of window: QuotaWindow) -> String {
+        let candidates = [window.source, window.sourceApp]
+        for candidate in candidates {
+            let value = (candidate ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty { return value }
+        }
+        return "fleet"
+    }
+
+    /// Whether a pulled window is this Mac's own push coming back.  Such a
+    /// window belongs under This Mac and must never be duplicated under Fleet.
+    static func isOwnPush(_ window: QuotaWindow) -> Bool {
+        let identity = identity(of: window).lowercased()
+        let mine = [QuotaPublisher.producerId, QuotaPublisher.producerInstanceId]
+            .map { $0.lowercased() }
+            + [QuotaPublisher.producerInstanceId.lowercased()
+                .replacingOccurrences(of: ".local", with: "")]
+        return mine.contains(identity)
+    }
+
+    /// "antigravity-usage" reads as "Antigravity Usage" in a group header.
+    static func title(for identity: String) -> String {
+        identity
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
+    }
+}
+
 @MainActor
 final class MonitorModel: ObservableObject {
     @Published var displayMode: DisplayMode {
@@ -121,7 +174,7 @@ final class MonitorModel: ObservableObject {
     private let defaults: UserDefaults
     private var localWindows: [QuotaWindow] = []
     private var serverWindows: [QuotaWindow] = []
-    private var fleetWindows: [QuotaWindow] = []
+    @Published private(set) var fleetWindowGroups: [FleetWindowGroup] = []
     private var refreshTimer: Timer?
     private var clockTimer: Timer?
     private var request: Task<Void, Never>?
@@ -317,20 +370,25 @@ final class MonitorModel: ObservableObject {
         refresh()
     }
 
-    /// The distinct `source` strings carried by fleet windows, sorted.  This is
-    /// every machine identity the payload actually supports: `QuotaWindow` has a
-    /// `source` and no host or producer field, so nothing else can be shown
-    /// without inventing it.
-    var fleetSourceLabels: [String] {
-        var seen = Set<String>()
-        for window in fleetWindows {
-            let value = (window.source ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !value.isEmpty { seen.insert(value) }
-        }
-        return seen.sorted()
-    }
+    /// The distinct origin labels carried by fleet windows, sorted.
+    var fleetSourceLabels: [String] { fleetWindowGroups.map(\.title) }
 
-    var fleetWindowCount: Int { fleetWindows.count }
+    var fleetWindowCount: Int { fleetWindowGroups.reduce(0) { $0 + $1.windows.count } }
+
+    /// Every pulled window, rendered.  The rows are grouped by the origin the
+    /// payload carries, and a group's rows are built exactly like local ones —
+    /// including the Antigravity pool split.
+    var fleetGroups: [FleetGroup] {
+        fleetWindowGroups.map { group in
+            let sections = QuotaResponse(generatedAt: "", windows: group.windows)
+                .platformSections(now: now)
+                .filter { !$0.windows.isEmpty }
+            return FleetGroup(id: group.id,
+                              title: group.title,
+                              windowCount: group.windows.count,
+                              rows: sections.flatMap { DisplaySection.rows(for: $0, now: now) })
+        }
+    }
 
     // MARK: - Server Pull Settings
 
@@ -533,18 +591,30 @@ final class MonitorModel: ObservableObject {
             if !useServer { self.serverWindows = [] }
             self.serverError = failure
             let localProviders = Set(self.localWindows.map(\.canonicalProviderKey))
-            let supplemental = self.serverWindows.filter { !localProviders.contains($0.canonicalProviderKey) }
-            let serverProviders = Set(supplemental.map(\.canonicalProviderKey))
-            let merged = self.localWindows.filter { !serverProviders.contains($0.canonicalProviderKey) } + supplemental
-            self.fleetWindows = supplemental
+
+            // A pulled window is either this Mac's own push coming back, or
+            // somebody else's reading.  Every window of the second kind is
+            // rendered under FLEET, grouped by its origin — the previous
+            // "supplemental" filter dropped all of them on a Mac that reads
+            // every provider locally, so a working pull showed nothing at all.
+            let ownPush = self.serverWindows.filter { FleetOrigin.isOwnPush($0) }
+            let others = self.serverWindows.filter { !FleetOrigin.isOwnPush($0) }
+            var grouped: [String: [QuotaWindow]] = [:]
+            for window in others {
+                grouped[FleetOrigin.identity(of: window), default: []].append(window)
+            }
+            self.fleetWindowGroups = grouped.keys.sorted().map {
+                FleetWindowGroup(id: $0, title: FleetOrigin.title(for: $0), windows: grouped[$0] ?? [])
+            }
+
+            // This Mac's own push fills in only a provider no local reader
+            // produced — with local readers off, that is every provider.
+            let adopted = ownPush.filter { !localProviders.contains($0.canonicalProviderKey) }
+            let merged = self.localWindows + adopted
             var origins: [String: QuotaOrigin] = [:]
-            for key in localProviders { origins[key] = .local }
-            for key in serverProviders { origins[key] = .fleet }
+            for key in Set(merged.map(\.canonicalProviderKey)) { origins[key] = .local }
             self.originByProvider = origins
             if newServer != nil { self.lastPullTime = self.now }
-            for provider in serverProviders {
-                self.issues[provider] = failure.map { "Fleet refresh failed." + sentenceGap + "Showing the last report." + sentenceGap + $0 }
-            }
             self.response = QuotaResponse(generatedAt: ISO8601DateFormatter().string(from: self.now), windows: merged)
             self.isRefreshing = false
             self.request = nil
