@@ -578,7 +578,16 @@ final class MonitorModel: ObservableObject {
                 await self.pushQuotasIfEnabled(windows: self.localWindows)
             }
 
-            if let newServer { self.serverWindows = newServer.platformSections(now: self.now).flatMap { $0.windows.map(\.window) } }
+            if let newServer {
+                // The raw windows, deliberately: running them through
+                // `platformSections` first pools every Antigravity model report
+                // into four windows and keeps only one observation's origin, so
+                // a second producer's readings vanished before they could be
+                // grouped.  Each origin group is sectioned on its own below.
+                self.serverWindows = newServer.windows.isEmpty
+                    ? newServer.providerGroups.flatMap(\.windows)
+                    : newServer.windows
+            }
             if !useServer { self.serverWindows = [] }
             self.serverError = failure
             let localProviders = Set(self.localWindows.map(\.canonicalProviderKey))
