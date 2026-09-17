@@ -37,10 +37,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureMenu()
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView:
-            GlancePopover(model: model, openConsole: { [weak self] page in
-                self?.showConsole(page: page)
-            }))
+        let glance = NSHostingController(rootView:
+            GlancePopover(model: model,
+                          openConsole: { [weak self] page in self?.showConsole(page: page) },
+                          openSettings: { [weak self] in self?.showSettings() }))
+        // SwiftUI must not publish a preferred content size: NSPopover prefers
+        // it over `contentSize`, which would let Glance resize itself while it
+        // is open and defeat the height ceiling the scroll view depends on.
+        glance.sizingOptions = []
+        popover.contentViewController = glance
         model.$displayMode.removeDuplicates().sink { [weak self] mode in
             self?.apply(mode)
         }.store(in: &subscriptions)
@@ -257,6 +262,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         editItem.submenu = editMenu
         menu.addItem(editItem)
+        // Window ▸ Close gives the Console `⌘W` through the responder chain.
+        // `applicationShouldTerminateAfterLastWindowClosed` is false, so closing
+        // the window leaves the app running in the menu bar.
+        let windowItem = NSMenuItem()
+        windowItem.title = "Window"
+        let windowMenu = NSMenu(title: "Window")
+        windowMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
+        windowItem.submenu = windowMenu
+        menu.addItem(windowItem)
         NSApp.mainMenu = menu
+        NSApp.windowsMenu = windowMenu
     }
 }

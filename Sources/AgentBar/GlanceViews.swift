@@ -8,6 +8,9 @@ import SwiftUI
 struct GlancePopover: View {
     @ObservedObject var model: MonitorModel
     var openConsole: (ConsolePage) -> Void
+    /// Settings has its own entry point rather than a fixed page, so the gear
+    /// and `⌘,` land in the same place: the Settings page last used.
+    var openSettings: () -> Void
 
     private var localSections: [DisplaySection] { model.displaySections }
     private var fleetGroups: [FleetGroup] { model.fleetGroups }
@@ -148,7 +151,7 @@ struct GlancePopover: View {
 
             Spacer(minLength: 4)
 
-            Button { openConsole(.settingsMenuBar) } label: {
+            Button { openSettings() } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 13, weight: .medium))
                     .frame(width: 24, height: 24)
@@ -196,12 +199,17 @@ struct GlanceRow: View {
 
     private var isLive: Bool { issue == nil && section.hasFreshReport }
 
+    /// The trailing column is 58pt wide, or 106pt with no percentage, and one
+    /// line tall.  A reader's issue is a sentence or two, so the column carries
+    /// a token and the sentence goes to the tooltip and the spoken value.
     private var trailingText: String {
         if percent != nil {
             let countdown = glanceResetCountdown(row.resetAt ?? driving?.resetAt, now: now)
             return countdown.isEmpty ? "no reset time" : countdown
         }
-        if let issue { return issue }
+        if let issue {
+            return issue.localizedCaseInsensitiveContains("sign in") ? "not signed in" : "unavailable"
+        }
         return section.windows.isEmpty ? "no report" : "not signed in"
     }
 
@@ -258,6 +266,7 @@ struct GlanceRow: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.title)
         .accessibilityValue(spokenValue)
+        .help(issue ?? row.title)
     }
 
     @ViewBuilder
@@ -298,6 +307,7 @@ struct GlanceRow: View {
         case .fleet: parts.append("from the fleet")
         case .local: parts.append(isLive ? "live" : "last report")
         }
+        if let issue { parts.append(issue) }
         return parts.joined(separator: ", ")
     }
 }

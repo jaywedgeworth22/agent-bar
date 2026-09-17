@@ -125,6 +125,18 @@ struct ConsoleView: View {
         .foregroundStyle(Theme.ink)
         .tint(Theme.accent)
         .background(Theme.background)
+        .background {
+            // The keyboard equivalents the spec asks for.  Hidden buttons
+            // rather than menu items, because the search field belongs to this
+            // view and nothing in AppKit can reach its focus state.
+            VStack {
+                Button("") { searchFocused = true }
+                    .keyboardShortcut("f", modifiers: .command)
+                    .disabled(state.page.isSettings)
+            }
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
     }
 
     // MARK: - Detail
@@ -563,7 +575,13 @@ struct PlatformDetailPage: View {
     }
     /// Custom display fields are per platform, so both Antigravity pools share
     /// the platform's own key rather than the pool-qualified one.
-    private var customInfoKey: String { row?.providerKey ?? providerKey }
+    private var customInfoKey: String { customInfoKey(for: providerKey) }
+
+    private func customInfoKey(for key: String) -> String {
+        let match = model.displaySections.first { $0.id == key }
+            ?? model.displaySections.first { $0.providerKey == key }
+        return match?.providerKey ?? key
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -584,7 +602,19 @@ struct PlatformDetailPage: View {
         }
         .onAppear(perform: load)
         .onDisappear(perform: save)
-        .onChange(of: providerKey) { _, _ in load() }
+        // Switching platforms in the sidebar reuses this view instance, so
+        // `onDisappear` never fires.  The edits in flight belong to the key
+        // that is going away, which is why the flush names it explicitly.
+        .onChange(of: providerKey) { oldKey, _ in
+            save(for: customInfoKey(for: oldKey))
+            load()
+        }
+        // Typed text is never held only in `@State`: closing the window or
+        // switching pages must not be able to lose it.
+        .onChange(of: customSubtitle) { _, _ in save() }
+        .onChange(of: planName) { _, _ in save() }
+        .onChange(of: costUsd) { _, _ in save() }
+        .onChange(of: renewalDate) { _, _ in save() }
     }
 
     /// Editing a platform's presentation happens on that platform's own page,
@@ -635,8 +665,10 @@ struct PlatformDetailPage: View {
         showCostAndRenewal = existing.showCostAndRenewal
     }
 
-    private func save() {
-        model.setCustomInfo(for: customInfoKey,
+    private func save() { save(for: customInfoKey) }
+
+    private func save(for key: String) {
+        model.setCustomInfo(for: key,
                             info: PlatformCustomInfo(customSubtitle: customSubtitle,
                                                      planName: planName,
                                                      costUsd: costUsd,
