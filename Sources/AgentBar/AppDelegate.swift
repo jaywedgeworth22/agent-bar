@@ -6,9 +6,12 @@ import SwiftUI
 enum AgentBarMain {
     @MainActor
     static func main() {
-        if let existing = NSRunningApplication.runningApplications(withBundleIdentifier: "com.jays.agent-bar.mac")
+        // Single-instance guard keyed on this build's own bundle identifier, so a
+        // development build with a different identifier can run beside the installed app.
+        if let bundleID = Bundle.main.bundleIdentifier,
+           let existing = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier && !$0.isTerminated }) {
-            existing.activate(options: [.activateAllWindows, .activateIgnoringOtherApps])
+            existing.activate(options: [.activateAllWindows])
             return
         }
         let app = NSApplication.shared
