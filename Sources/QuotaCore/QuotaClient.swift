@@ -17,7 +17,7 @@ extension QuotaClientError: LocalizedError {
         case .invalidEndpoint: return "The quota endpoint URL is not allowed."
         case .invalidToken: return "The quota token is empty."
         case .timedOut: return "The quota request timed out."
-        case .unauthorized: return "The quota request was unauthorized."
+        case .unauthorized: return "Unauthorized (HTTP 401)." + sentenceGap + "Check your Read Token."
         case let .httpStatus(status): return "The quota server returned HTTP \(status)."
         case .responseTooLarge: return "The quota response is too large."
         case .malformedResponse: return "The quota response was malformed."
@@ -46,6 +46,9 @@ public actor QuotaClient {
         urlProtocolClasses: [AnyClass]? = nil
     ) throws {
         guard QuotaClient.isAllowedEndpoint(endpoint) else { throw QuotaClientError.invalidEndpoint }
+        // A token pasted out of a shell export or a JSON file arrives quoted,
+        // and a quoted bearer is rejected with no hint that the quotes are why.
+        let token = sanitizedToken(token)
         guard !token.isEmpty, !token.contains("\r"), !token.contains("\n") else { throw QuotaClientError.invalidToken }
         guard timeout > 0, timeout.isFinite, maxResponseBytes > 0 else { throw QuotaClientError.invalidEndpoint }
 

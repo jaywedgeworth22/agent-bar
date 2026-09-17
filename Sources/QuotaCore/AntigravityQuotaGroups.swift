@@ -46,6 +46,112 @@ public enum AntigravityQuotaGroups {
         return result
     }
 
+    // MARK: - Pools
+
+    /// One Antigravity model pool, summarised across its own windows.
+    ///
+    /// Antigravity sells two independent pools, and collapsing them into a
+    /// single percentage is what made an exhausted Claude/GPT weekly read as
+    /// "Antigravity 0%" while Gemini still had most of its allowance.  Every
+    /// surface that shows one number per platform asks this type for its number
+    /// instead of taking the minimum across the provider.
+    public struct Pool: Equatable, Sendable {
+        /// `gemini` or `third-party`.  Matches the exported window id segment.
+        public let key: String
+        /// The pool's own windows, five-hour first.
+        public let windows: [QuotaWindow]
+        /// The lowest remaining percentage among the windows that still count.
+        public let remainingPercent: Double?
+        /// True when this pool's weekly window reports zero remaining.
+        public let weeklyExhausted: Bool
+        /// The window `remainingPercent` was taken from.
+        public let drivingWindowId: String?
+        /// That window's reset, so a row's countdown matches its percentage.
+        public let resetAt: Date?
+        /// Windows that report a percentage which must not be believed — a
+        /// five-hour window under an exhausted weekly cap.
+        public let maskedWindowIds: Set<String>
+
+        public init(
+            key: String,
+            windows: [QuotaWindow],
+            remainingPercent: Double?,
+            weeklyExhausted: Bool,
+            drivingWindowId: String?,
+            resetAt: Date?,
+            maskedWindowIds: Set<String>
+        ) {
+            self.key = key
+            self.windows = windows
+            self.remainingPercent = remainingPercent
+            self.weeklyExhausted = weeklyExhausted
+            self.drivingWindowId = drivingWindowId
+            self.resetAt = resetAt
+            self.maskedWindowIds = maskedWindowIds
+        }
+    }
+
+    /// The pool keys, in display order.
+    public static let poolKeys = ["gemini", "third-party"]
+
+    /// Splits Antigravity windows into their two pools.  Windows that belong to
+    /// no recognisable pool are dropped rather than guessed at, and a pool with
+    /// no windows at all is omitted.
+    public static func pools(from windows: [QuotaWindow], now: Date = Date()) -> [Pool] {
+        let reports = windows.filter { $0.canonicalProviderKey == "google-antigravity" }
+        var result: [Pool] = []
+        for key in poolKeys {
+            let owned = reports.filter { poolKey(for: $0) == key }
+            guard !owned.isEmpty else { continue }
+            let ordered = owned.sorted { left, right in
+                let leftWeekly = cadence(left) == "weekly"
+                let rightWeekly = cadence(right) == "weekly"
+                if leftWeekly != rightWeekly { return !leftWeekly }
+                return left.id < right.id
+            }
+            let weeklyExhausted = ordered.contains {
+                cadence($0) == "weekly" && $0.boundedRemainingPercent == 0
+            }
+            let masked: Set<String> = weeklyExhausted
+                ? Set(ordered.filter { cadence($0) == "5h" }.map(\.id))
+                : []
+            // A stale observation is still shown, but it never sets the pool's
+            // headline number while a fresh one exists.
+            let counted = ordered.filter {
+                !masked.contains($0.id)
+                    && $0.boundedRemainingPercent != nil
+                    && QuotaWindowSnapshot(window: $0, now: now).isFresh
+            }
+            let driving = counted.min {
+                ($0.boundedRemainingPercent ?? 100) < ($1.boundedRemainingPercent ?? 100)
+            }
+            result.append(Pool(key: key,
+                               windows: ordered,
+                               remainingPercent: driving?.boundedRemainingPercent,
+                               weeklyExhausted: weeklyExhausted,
+                               drivingWindowId: driving?.id,
+                               resetAt: driving?.resetDate,
+                               maskedWindowIds: masked))
+        }
+        return result
+    }
+
+    /// The ids of windows whose percentage must not be shown or counted: a
+    /// five-hour window is meaningless while its pool's weekly cap is spent.
+    public static func maskedWindowIds(in windows: [QuotaWindow], now: Date = Date()) -> Set<String> {
+        pools(from: windows, now: now).reduce(into: Set<String>()) { $0.formUnion($1.maskedWindowIds) }
+    }
+
+    /// Which pool a window belongs to, or nil when it names neither.
+    public static func poolKey(for value: QuotaWindow) -> String? {
+        pool(value)
+    }
+
+    /// Whether a window reports a five-hour or a weekly cadence.
+    public static func cadenceKey(for value: QuotaWindow) -> String? {
+        cadence(value)
+    }
+
     private static func pool(_ value: QuotaWindow) -> String? {
         let identity = [value.modelId, value.modelType, value.label].compactMap { $0 }.joined(separator: " ").lowercased()
         if identity.contains("gemini") { return "gemini" }

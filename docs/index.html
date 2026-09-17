@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentBar — See Your AI Coding Quota From The Menu Bar</title>
+<meta name="description" content="AgentBar is a free, open-source macOS menu bar app that shows how much quota is left on every AI coding CLI signed in on your Mac, and can push and pull those readings across the machines you use.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMwQjZCNUQiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIxNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjYiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI0IiBmaWxsPSIjZmZmZmZmIi8+PC9zdmc+">
+<style>
+  :root{
+    --accent:#0B6B5D;
+    --accent-dark:#084d43;
+    --accent-tint:#e6f0ee;
+    --text:#1d1d1f;
+    --text-muted:#5f6b69;
+    --bg:#ffffff;
+    --card-bg:#f5f7f6;
+    --code-bg:#eef2f1;
+    --border:#dde3e1;
+    --radius:14px;
+    --max-width:960px;
+    --focus:#1d1d1f;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{max-width:100%;height:auto;}
+  .container{max-width:var(--max-width);margin:0 auto;padding:0 16px;}
+
+  header.hero{text-align:center;padding:56px 16px 36px;}
+  .app-icon{border-radius:21px;border:1px solid var(--border);}
+  h1{font-size:34px;margin:22px 0 10px;letter-spacing:-0.02em;}
+  .tagline{font-size:18px;color:var(--text-muted);margin:0 auto;max-width:520px;}
+
+  main > section{padding:44px 0;}
+  main > section + section{border-top:1px solid var(--border);}
+  h2{font-size:24px;margin:0 0 20px;}
+  h3{font-size:15px;margin:0 0 12px;color:var(--text);text-transform:uppercase;letter-spacing:0.04em;}
+  p{margin:0 0 14px;}
+  p:last-child{margin-bottom:0;}
+
+  .install-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:680px){.install-grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
+
+  .code-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  pre{flex:1 1 220px;min-width:0;margin:0;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;overflow-x:auto;}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:pre;}
+
+  button,.btn-primary{font-family:inherit;font-weight:600;border-radius:8px;cursor:pointer;}
+  #copy-btn{flex:0 0 auto;background:#fff;color:var(--accent);border:1px solid var(--accent);padding:8px 14px;font-size:14px;}
+  #copy-btn:hover{background:var(--accent-tint);}
+
+  .btn-primary{display:inline-block;background:var(--accent);color:#fff;border:none;padding:12px 22px;text-decoration:none;font-size:15px;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .fine-print{color:var(--text-muted);font-size:13px;margin-top:12px;}
+
+  a{color:var(--accent);}
+  a:hover{color:var(--accent-dark);}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+
+  .glance-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:600px;margin:0 auto 28px;}
+  @media (max-width:520px){.glance-row{grid-template-columns:1fr;max-width:320px;}}
+
+  figure{margin:0 0 24px;}
+  figure:last-child{margin-bottom:0;}
+  figure img{display:block;border-radius:10px;border:1px solid var(--border);}
+  figcaption{margin-top:8px;font-size:13px;color:var(--text-muted);text-align:center;}
+
+  .provider-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;}
+  .provider-list li{padding:12px 16px;background:var(--card-bg);border:1px solid var(--border);border-radius:10px;font-size:15px;}
+  .provider-list code{font-size:13px;background:#e8edec;padding:1px 5px;border-radius:4px;}
+
+  footer{padding:32px 16px 48px;text-align:center;color:var(--text-muted);font-size:13px;}
+  footer p{margin:6px 0;}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <img class="app-icon" src="icon-512.png" width="96" height="96" alt="AgentBar app icon">
+  <h1>AgentBar</h1>
+  <p class="tagline">See how much of every AI coding agent's quota is left, from the menu bar.</p>
+</header>
+
+<main>
+  <section id="install" class="container">
+    <h2>Install AgentBar</h2>
+    <div class="install-grid">
+      <div class="card">
+        <h3>Homebrew</h3>
+        <div class="code-row">
+          <pre><code id="brew-cmd">brew install --cask jaywedgeworth22/tap/agent-bar</code></pre>
+          <button type="button" id="copy-btn" aria-label="Copy Homebrew Install Command">Copy</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Direct Download</h3>
+        <a class="btn-primary" href="https://github.com/jaywedgeworth22/agent-bar/releases/latest/download/AgentBar.dmg">Download For Mac</a>
+        <p class="fine-print">macOS 14 or later · Apple silicon and Intel · signed and notarized · free, MIT</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenshots" class="container">
+    <h2>Screenshots</h2>
+    <h3>Glance</h3>
+    <div class="glance-row">
+      <figure>
+        <img src="screenshots/glance-light.png" width="772" height="964" alt="Glance popover in light mode: one row per platform under This Mac, each with a percentage, a usage bar, and a reset countdown">
+        <figcaption>Light</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/glance-dark.png" width="772" height="964" alt="Glance popover in dark mode: one row per platform under This Mac, each with a percentage, a usage bar, and a reset countdown">
+        <figcaption>Dark</figcaption>
+      </figure>
+    </div>
+    <h3>Console</h3>
+    <figure>
+      <img src="screenshots/console-light.png" width="1600" height="1120" alt="Console window in light mode: sidebar split into Quotas and Settings, with an all-platforms overview">
+      <figcaption>Console, light</figcaption>
+    </figure>
+    <figure>
+      <img src="screenshots/console-dark.png" width="1600" height="1120" alt="Console window in dark mode: sidebar split into Quotas and Settings, with an all-platforms overview">
+      <figcaption>Console, dark</figcaption>
+    </figure>
+  </section>
+
+  <section id="providers" class="container">
+    <h2>What It Reads</h2>
+    <p>AgentBar reads each CLI's own saved credentials, in place — nothing is typed, ever.</p>
+    <ul class="provider-list">
+      <li><strong>Claude</strong> — quota windows (5-hour and weekly), read from <code>~/.claude/.credentials.json</code> or the Keychain.</li>
+      <li><strong>Codex</strong> — rate-limit windows, read from <code>~/.codex/auth.json</code>.</li>
+      <li><strong>Antigravity</strong> — pooled Gemini and Claude &amp; GPT quota, read via the antigravity-usage CLI and Antigravity's own language server.</li>
+      <li><strong>Cursor</strong> — included-plan usage, read from Cursor.app's local session database.</li>
+      <li><strong>Grok CLI</strong> — billing and credits, read via Grok's CLI proxy from <code>~/.grok/auth.json</code>.</li>
+      <li><strong>Grok Bot</strong> — weekly usage, read via Cursor's dashboard service, from that same session database.</li>
+      <li><strong>MiniMax</strong> — per-model and weekly remaining quota, read from <code>~/.mmx/config.json</code>.</li>
+    </ul>
+  </section>
+
+  <section id="fleet" class="container">
+    <h2>Fleet Push And Pull</h2>
+    <p>AgentBar can push this Mac's quota windows to an endpoint you run, and pull other machines' windows back into the same view.  Both are off by default, and nothing leaves this Mac until you turn one on and enter an endpoint yourself.  The two secrets it stores, an ingest token and a read token, live in the macOS Keychain, never a config file.</p>
+    <figure>
+      <img src="screenshots/settings-sources-fleet.png" width="1600" height="1120" alt="Console Settings, Sources and Fleet page, with This Mac, Share This Mac, and Pull The Fleet groups">
+      <figcaption>Settings → Sources &amp; Fleet</figcaption>
+    </figure>
+    <figure>
+      <img src="screenshots/glance-fleet.png" width="772" height="808" alt="Glance popover with a Fleet section beneath This Mac, showing another machine's Antigravity usage pulled in and labeled Fleet">
+      <figcaption>Glance, with another machine's quota pulled into the same view</figcaption>
+    </figure>
+  </section>
+
+  <section id="headline-number" class="container">
+    <h2>How The Headline Number Is Chosen</h2>
+    <p>A collapsed row in Glance, or a card in Console, always shows the fresh window closest to its cap, the lowest remaining percent, alongside that window's own reset countdown.  The menu bar has its own setting, Menu Bar → Displayed Quota, choosing the lowest active quota by default, the lowest quota outright, or one window pinned by name.  Console's Next Reset tile is the soonest reset across every fresh window on every platform, not just whichever window is nearest its cap.</p>
+    <figure>
+      <img src="screenshots/platform-antigravity.png" width="1600" height="1120" alt="Antigravity platform detail, showing separate Gemini and Claude and GPT pools">
+      <figcaption>Antigravity splits into two pools, Gemini and Claude &amp; GPT, so one hitting zero does not hide the other.</figcaption>
+    </figure>
+  </section>
+
+  <section id="is-this-for-you" class="container">
+    <h2>Is This For You?</h2>
+    <p>If you only run one Mac, better tools already exist: <a href="https://github.com/steipete/CodexBar">steipete/CodexBar</a> and <a href="https://github.com/tddworks/ClaudeBar">tddworks/ClaudeBar</a> both cover more providers than AgentBar does, and both are free, signed, and notarized.  AgentBar exists for a different job, reading quota into a collector you run yourself and pulling it back across every machine you use.</p>
+  </section>
+</main>
+
+<footer class="container">
+  <p><a href="https://github.com/jaywedgeworth22/agent-bar">AgentBar on GitHub</a> · MIT license</p>
+  <p>Provider names and marks belong to their owners and are used only to identify the services.</p>
+</footer>
+
+<script>
+(function(){
+  var btn = document.getElementById('copy-btn');
+  var code = document.getElementById('brew-cmd');
+  if (!btn || !code || !navigator.clipboard) { return; }
+  btn.addEventListener('click', function(){
+    navigator.clipboard.writeText(code.textContent).then(function(){
+      var original = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(function(){ btn.textContent = original; }, 1500);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

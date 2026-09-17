@@ -42,7 +42,7 @@ public enum QuotaPublisherError: Error, Equatable, Sendable, LocalizedError {
         case .emptyWindows:
             return "No quota windows to publish."
         case .unauthorized:
-            return "Unauthorized (HTTP 401). Check your Ingest Token."
+            return "Unauthorized (HTTP 401)." + sentenceGap + "Check your Ingest Token."
         case let .httpStatus(status, detail):
             if let detail, !detail.isEmpty {
                 return "Server returned HTTP \(status): \(detail)"
@@ -59,6 +59,16 @@ public enum QuotaPublisherError: Error, Equatable, Sendable, LocalizedError {
 }
 
 public actor QuotaPublisher {
+    /// The producer this app pushes under.  A window pulled back from the fleet
+    /// carrying this producer is this Mac's own reading making a round trip, so
+    /// the UI shows it under This Mac rather than duplicating it under Fleet.
+    public static let producerId = "agent-bar"
+
+    /// The instance this Mac pushes under, so a pulled window can be recognised
+    /// as its own even when a payload carries the instance rather than the
+    /// producer.
+    public static var producerInstanceId: String { Host.current().localizedName ?? "Mac" }
+
     private let timeout: TimeInterval
     private let session: URLSession
 
@@ -107,7 +117,7 @@ public actor QuotaPublisher {
         request.setValue("2", forHTTPHeaderField: "x-usage-telemetry-version")
         request.setValue("agent-bar/1.0", forHTTPHeaderField: "User-Agent")
 
-        if let token = token?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
+        if let token = token.map(sanitizedToken(_:)), !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue(token, forHTTPHeaderField: "x-usage-ingest-token")
         }
@@ -148,7 +158,7 @@ public actor QuotaPublisher {
     }
 
     public nonisolated func buildUsageMonitorV2Payload(windows: [QuotaWindow], occurredAtIso: String, machineName: String? = nil) throws -> Data {
-        let machine = machineName ?? Host.current().localizedName ?? "Mac"
+        let machine = machineName ?? Self.producerInstanceId
         let events: [[String: Any]] = windows.compactMap { window in
             guard let remaining = window.boundedRemainingPercent ?? window.remainingPercent else { return nil }
             let seriesKey = window.resetAt ?? "\(occurredAtIso.prefix(13)):00"
@@ -174,7 +184,7 @@ public actor QuotaPublisher {
                 "isExhausted": window.isExhausted || clampedRemaining <= 0,
                 "remainingUnknown": false,
                 "scale": "percent_0_100",
-                "source": "agent-bar"
+                "source": Self.producerId
             ]
             if let resetAt = window.resetAt { meta["resetAt"] = resetAt }
             if let w = window.window { meta["quotaWindow"] = w }
@@ -201,7 +211,7 @@ public actor QuotaPublisher {
 
         let root: [String: Any] = [
             "schemaVersion": 2,
-            "producerId": "agent-bar",
+            "producerId": Self.producerId,
             "producerInstanceId": machine,
             "events": events
         ]
@@ -209,7 +219,7 @@ public actor QuotaPublisher {
     }
 
     public nonisolated func buildGenericWebhookPayload(windows: [QuotaWindow], occurredAtIso: String, machineName: String?) throws -> Data {
-        let machine = machineName ?? Host.current().localizedName ?? "Mac"
+        let machine = machineName ?? Self.producerInstanceId
         let windowPayloads: [[String: Any]] = windows.map { w in
             var dict: [String: Any] = [
                 "id": w.id,
