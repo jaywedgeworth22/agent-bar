@@ -59,6 +59,14 @@ usage: script/build_and_run.sh [mode]
   and printed.  Bundles with another identifier, and bundles inside another
   checkout, are never touched.  Set AGENTBAR_PRUNE_DRY_RUN=1 to print what the
   prune would Trash without moving anything.
+
+  Signing: $AGENTBAR_CODESIGN_IDENTITY when it is set, otherwise the first
+  "Developer ID Application:" identity in the codesigning keychain, otherwise
+  ad-hoc with a warning.  A stable identity is what lets the saved Read Token
+  and Ingest Token survive a rebuild — ad-hoc gives every build a different
+  code identity, so the Keychain stops trusting the new one.  --package also
+  signs with the hardened runtime and a secure timestamp and prints the
+  notarytool command; notarizing itself is a separate step.
 USAGE
 }
 
@@ -77,6 +85,99 @@ kill_owned_app() {
 
 kill_installed_app() {
   kill_owned_process "$INSTALLED_APP/Contents/MacOS/$PRODUCT_NAME"
+}
+
+# --- Signing -----------------------------------------------------------------
+# Ad-hoc signing (`codesign --sign -`) gives every build a brand new code
+# identity, and the login Keychain grants access per identity.  Items saved by
+# build N were therefore unreadable by build N+1, which is why the saved Read
+# Token and Ingest Token had to be pasted again after every rebuild.  Signing
+# with a real identity keeps the designated requirement stable — it names the
+# bundle identifier and the team rather than a per-build cdhash — so one
+# authorization survives every later build.
+SIGN_OPTIONS=()
+
+resolve_codesign_identity() {
+  if [[ -n "${AGENTBAR_CODESIGN_IDENTITY:-}" ]]; then
+    printf '%s\n' "$AGENTBAR_CODESIGN_IDENTITY"
+    return 0
+  fi
+  /usr/bin/security find-identity -v -p codesigning 2>/dev/null \
+    | /usr/bin/sed -n 's/^.*"\(Developer ID Application:[^"]*\)".*$/\1/p' \
+    | /usr/bin/head -n 1
+}
+
+# codesign blocks on a Keychain key-access panel when this shell has never been
+# authorized to use the signing key, and a build must never hang behind a panel
+# nobody is watching.  Thirty seconds, then ad-hoc.  A killed process reports
+# 128 plus its signal, and `alarm` raises SIGALRM (14).
+WATCHDOG_STATUS=142
+codesign_bounded() {
+  /usr/bin/perl -e 'alarm 30; exec @ARGV' /usr/bin/codesign "$@"
+}
+
+adhoc_warning() {
+  cat >&2 <<'WARN'
+warning: signing ad-hoc.  Every build then carries a different code identity, so
+         the saved Read Token and Ingest Token stop being readable and have to
+         be re-authorized (Sources & Fleet, Re-Authorize Saved Token) or pasted
+         again after every build.  Set AGENTBAR_CODESIGN_IDENTITY, or install a
+         Developer ID Application identity, to sign stably instead.
+WARN
+}
+
+# Nested code is signed before the bundle that contains it.  That is what
+# replaces --deep, which re-signs everything inside with the outer bundle's
+# options and which Apple has deprecated for exactly that reason.
+nested_code_paths() {
+  find "$APP_CONTENTS" \
+    \( -name '*.framework' -o -name '*.bundle' -o -name '*.appex' -o -name '*.dylib' \) \
+    -prune -print 2>/dev/null | sort -r
+}
+
+sign_with_identity() {
+  local identity="$1" target status
+  while IFS= read -r target; do
+    [[ -n "$target" ]] || continue
+    codesign_bounded --force ${SIGN_OPTIONS[@]+"${SIGN_OPTIONS[@]}"} --sign "$identity" "$target" && continue
+    status=$?
+    # A SwiftPM resource bundle carries no Info.plist, so codesign calls it an
+    # unsuitable bundle format.  That is expected and harmless — the app's own
+    # signature seals it as a resource either way — so it is noted and skipped
+    # rather than dragging the whole build down to ad-hoc.  A watchdog kill is
+    # the one nested failure that is fatal, because it means codesign is
+    # sitting on a key-access panel and the app would only hang too.
+    [[ "$status" != "$WATCHDOG_STATUS" ]] || return 1
+    echo "note: not separately signable, sealed as a resource instead: $target"
+  done < <(nested_code_paths)
+  codesign_bounded --force ${SIGN_OPTIONS[@]+"${SIGN_OPTIONS[@]}"} --sign "$identity" "$APP_BUNDLE" || return 1
+}
+
+# The designated requirement is the proof.  Signed stably it names the
+# identifier and the team; ad-hoc it pins this one build's cdhash.
+describe_signature() {
+  /usr/bin/codesign -dv --verbose=2 "$APP_BUNDLE" 2>&1 | /usr/bin/sed 's/^/  /'
+  /usr/bin/codesign -d -r- "$APP_BUNDLE" 2>&1 | /usr/bin/sed 's/^/  /'
+}
+
+sign_app_bundle() {
+  local identity
+  identity="$(resolve_codesign_identity)"
+  if [[ -n "$identity" ]]; then
+    if sign_with_identity "$identity"; then
+      echo "signed with $identity"
+      describe_signature
+      return 0
+    fi
+    echo "warning: signing with '$identity' failed or timed out." >&2
+  else
+    echo "warning: no Developer ID Application identity is available for codesigning." >&2
+  fi
+  adhoc_warning
+  # The hardened-runtime and timestamp options belong to a real identity, so the
+  # fallback drops them and signs the bundle whole.
+  /usr/bin/codesign --force --deep --sign - "$APP_BUNDLE"
+  describe_signature
 }
 
 bundle_identifier() {
@@ -152,7 +253,7 @@ build_and_stage() {
 </plist>
 PLIST
 
-  /usr/bin/codesign --force --deep --sign - "$APP_BUNDLE"
+  sign_app_bundle
 }
 
 install_owned_app() {
@@ -224,6 +325,10 @@ prune_other_copies() {
 
 package_dist() {
   CONFIGURATION="release"
+  # A distributed build needs the hardened runtime and a secure
+  # timestamp, or notarization rejects it.  Notarizing is a separate
+  # step; the command is printed below rather than run here.
+  SIGN_OPTIONS=(--options runtime --timestamp)
   build_and_stage
   local zip_file="$DIST_DIR/$APP_NAME.zip"
   rm -f "$zip_file"
@@ -236,6 +341,9 @@ package_dist() {
   rm -rf "$APP_BUNDLE"
   echo "Packaged: $zip_file"
   echo "SHA-256:  $sha"
+  echo "Notarize with:"
+  echo "  xcrun notarytool submit \"$zip_file\" --keychain-profile AC_PASSWORD --wait"
+  echo "  xcrun stapler staple \"$APP_NAME.app\"   # after unzipping where it will live"
 }
 
 case "$MODE" in
