@@ -260,3 +260,60 @@ struct CompactDashboardQuotaRow: View {
         }
     }
 }
+
+/// One selection type for the sidebar, the detail pane and every deep link from
+/// Glance, the app menu and the status menu.
+enum ConsolePage: Hashable {
+    case allPlatforms
+    case platform(String)
+    case settingsMenuBar
+    case settingsPlatforms
+    case settingsSourcesFleet
+    case settingsAppearance
+    case settingsAbout
+
+    var isSettings: Bool {
+        switch self {
+        case .allPlatforms, .platform: return false
+        default: return true
+        }
+    }
+
+    var storageKey: String {
+        switch self {
+        case .allPlatforms: return "allPlatforms"
+        case .platform(let providerKey): return "platform:" + providerKey
+        case .settingsMenuBar: return "settingsMenuBar"
+        case .settingsPlatforms: return "settingsPlatforms"
+        case .settingsSourcesFleet: return "settingsSourcesFleet"
+        case .settingsAppearance: return "settingsAppearance"
+        case .settingsAbout: return "settingsAbout"
+        }
+    }
+
+    static func fromStorageKey(_ value: String) -> ConsolePage? {
+        switch value {
+        case "allPlatforms": return .allPlatforms
+        case "settingsMenuBar": return .settingsMenuBar
+        case "settingsPlatforms": return .settingsPlatforms
+        case "settingsSourcesFleet": return .settingsSourcesFleet
+        case "settingsAppearance": return .settingsAppearance
+        case "settingsAbout": return .settingsAbout
+        default:
+            guard value.hasPrefix("platform:") else { return nil }
+            return .platform(String(value.dropFirst(9)))
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .allPlatforms: return "All Platforms"
+        case .platform(let providerKey): return providerKey
+        case .settingsMenuBar: return "Menu Bar"
+        case .settingsPlatforms: return "Platforms"
+        case .settingsSourcesFleet: return "Sources & Fleet"
+        case .settingsAppearance: return "Appearance"
+        case .settingsAbout: return "About"
+        }
+    }
+}

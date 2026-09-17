@@ -2,212 +2,355 @@ import AppKit
 import QuotaCore
 import SwiftUI
 
-struct QuotaPopover: View {
+/// The status-item popover.  Read-only, one row per platform, plus three
+/// affordances in the footer.  Glance never renders a `PlatformCard`; the
+/// Console never renders a `GlanceRow`.
+struct GlancePopover: View {
     @ObservedObject var model: MonitorModel
-    var openMonitor: () -> Void
-    var openSettings: () -> Void
+    var openConsole: (ConsolePage) -> Void
+
+    private var localSections: [QuotaPlatformSection] {
+        model.sections.filter { model.originByProvider[$0.providerKey] != .fleet }
+    }
+    private var fleetSections: [QuotaPlatformSection] {
+        model.sections.filter { model.originByProvider[$0.providerKey] == .fleet }
+    }
+    private var showsFleetSetup: Bool { !model.syncEnabled && !model.serverEnabled }
+    private var hasAnySource: Bool { model.localEnabled || model.serverEnabled }
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("AgentBar").font(.headline)
-                    Text("\(model.reportingCount) platforms reporting").font(.caption2).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 4)
-                Picker("Layout", selection: $model.viewLayout) {
-                    ForEach(QuotaViewLayout.allCases) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 140)
-
-                Button { model.refresh() } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.plain)
-                .disabled(model.isRefreshing)
-                .help("Refresh Quotas")
-                .accessibilityLabel("Refresh Quotas")
-
-                Button(action: openSettings) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.plain)
-                .help("Settings")
-                .accessibilityLabel("Settings")
-            }.padding(14)
+            header
             Divider()
-            ScrollView {
-                VStack(spacing: 8) {
-                    if model.isRefreshing { ProgressView("Refreshing quotas…").font(.caption).padding(4) }
-                    if let error = model.serverError { Text(error).font(.caption).foregroundStyle(Theme.warning) }
-                    if model.viewLayout == .summary {
-                        ForEach(model.sections.sorted { !$0.windows.isEmpty && $1.windows.isEmpty }, id: \.providerKey) { section in
-                            CompactPopoverPlatformRow(
-                                section: section,
-                                now: model.now,
-                                issue: model.issues[section.providerKey],
-                                customInfo: model.platformCustomInfo[section.providerKey]
-                            )
-                        }
-                    } else {
-                        ForEach(model.sections.sorted { !$0.windows.isEmpty && $1.windows.isEmpty }, id: \.providerKey) { section in
-                            PlatformCard(
-                                section: section,
-                                now: model.now,
-                                issue: model.issues[section.providerKey],
-                                compact: true,
-                                customInfo: model.platformCustomInfo[section.providerKey]
-                            )
-                        }
-                    }
-                }.padding(10)
-            }.background(Theme.background)
+            if hasAnySource {
+                ScrollView { content.padding(.vertical, 8) }
+                    .background(Theme.background)
+            } else {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.background)
+            }
             Divider()
-            HStack {
-                Button("Open Monitor", action: openMonitor).buttonStyle(.borderedProminent)
-                Spacer()
-                Menu {
-                    Picker("Show In", selection: $model.displayMode) {
-                        ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
-                    }
-                    Divider()
-                    Picker("Menu Bar Style", selection: $model.menuBarStyle) {
-                        ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0) }
-                    }
-                    Picker("Menu Bar Quota", selection: $model.menuBarQuotaSelection) {
-                        ForEach(model.availableMenuBarQuotas, id: \.id) { item in
-                            Text(item.label).tag(item.id)
-                        }
-                    }
-                    Divider()
-                    Button("Quit AgentBar") { NSApp.terminate(nil) }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.ink)
-                }
-                .menuIndicator(.hidden)
-                .menuStyle(.borderlessButton)
-                .frame(width: 28, height: 28)
-            }.padding(12)
+            footer
         }
-        .frame(width: 410, height: 600)
+        .frame(width: Metrics.glanceWidth)
+        .foregroundStyle(Theme.ink)
         .tint(Theme.accent)
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text("AgentBar").font(.system(size: 13, weight: .semibold))
+            Spacer(minLength: 8)
+            Text(headerStatus)
+                .font(.system(size: 11).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, Metrics.glanceGutter)
+        .frame(height: Metrics.glanceHeaderHeight)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var headerStatus: String {
+        let counted = "\(model.reportingCount) of \(model.sections.count)"
+        guard let checked = model.lastChecked else { return counted }
+        return "\(counted) · \(checked.formatted(date: .omitted, time: .shortened))"
+    }
+
+    // MARK: - Content
+
+    @ViewBuilder
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            groupHeader("THIS MAC")
+            ForEach(localSections, id: \.providerKey) { section in
+                GlanceRow(section: section,
+                          now: model.now,
+                          issue: model.issues[section.providerKey],
+                          origin: .local)
+            }
+            if !fleetSections.isEmpty {
+                Spacer().frame(height: 12)
+                HStack(alignment: .top, spacing: 0) {
+                    Rectangle().fill(Theme.fleet)
+                        .frame(width: 2)
+                    VStack(alignment: .leading, spacing: 0) {
+                        groupHeader(fleetGroupTitle)
+                        ForEach(fleetSections, id: \.providerKey) { section in
+                            GlanceRow(section: section,
+                                      now: model.now,
+                                      issue: model.issues[section.providerKey],
+                                      origin: .fleet)
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+            if showsFleetSetup {
+                Spacer().frame(height: 12)
+                FleetSetupRow { openConsole(.settingsSourcesFleet) }
+                    .padding(.horizontal, Metrics.glanceGutter)
+            }
+        }
+    }
+
+    private var fleetGroupTitle: String {
+        let labels = model.fleetSourceLabels
+        return labels.isEmpty ? "FLEET" : "FLEET · \(labels.joined(separator: ", "))"
+    }
+
+    private func groupHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 10, weight: .bold))
+            .tracking(0.8)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(height: Metrics.glanceGroupHeaderHeight, alignment: .leading)
+            .padding(.horizontal, Metrics.glanceGutter)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "arrow.up.arrow.down.circle")
+                .font(.system(size: 26))
+                .foregroundStyle(.secondary)
+            Text("No quota report yet")
+                .font(.system(size: 13, weight: .semibold))
+            Text("Turn on local readers or connect a fleet server.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(Metrics.glanceGutter)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Footer
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            Button { model.refresh() } label: {
+                if model.isRefreshing {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small).frame(width: 14, height: 14)
+                        Text("Refreshing")
+                    }
+                } else {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.isRefreshing)
+            .help("Refresh Quotas")
+            .accessibilityLabel("Refresh Quotas")
+
+            Spacer(minLength: 4)
+
+            Button { openConsole(.settingsMenuBar) } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .help("Settings")
+            .accessibilityLabel("Settings")
+
+            Button { openConsole(.allPlatforms) } label: {
+                HStack(spacing: 5) {
+                    Text("Open AgentBar")
+                    Text("⌘1").font(.system(size: 10)).foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .help("Open AgentBar")
+            .accessibilityLabel("Open AgentBar")
+        }
+        .padding(.horizontal, Metrics.glanceGutter)
+        .frame(height: Metrics.glanceFooterHeight)
     }
 }
 
-struct CompactPopoverPlatformRow: View {
+/// One platform, one line.  The only compact row type in the app.
+struct GlanceRow: View {
     let section: QuotaPlatformSection
     let now: Date
     let issue: String?
-    var customInfo: PlatformCustomInfo? = nil
+    let origin: QuotaOrigin
 
     private var primaryWindows: [QuotaWindowSnapshot] {
         section.windows.filter { !$0.window.isSupplementaryVideoQuota }
     }
 
-    private var subtitleText: String? {
-        if let custom = customInfo, !custom.customSubtitle.isEmpty {
-            return custom.customSubtitle
+    /// The window the row speaks for: the one closest to its cap.
+    private var driving: QuotaWindowSnapshot? {
+        let withPercent = primaryWindows.filter { $0.remainingPercent != nil }
+        return withPercent.min { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) }
+            ?? primaryWindows.first
+    }
+
+    private var percent: Double? {
+        issue == nil ? driving?.remainingPercent : nil
+    }
+
+    private var tint: Color {
+        guard let driving, issue == nil else { return .secondary }
+        return quotaStatusColor(for: driving, sourceFailed: false)
+    }
+
+    private var isLive: Bool { issue == nil && section.hasFreshReport }
+
+    private var trailingText: String {
+        if let driving, percent != nil {
+            let countdown = glanceResetCountdown(driving.resetAt, now: now)
+            return countdown.isEmpty ? "no reset time" : countdown
         }
-        if let custom = customInfo, custom.showCostAndRenewal {
-            let parts = [custom.planName, custom.costUsd, custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"].filter { !$0.isEmpty }
-            if !parts.isEmpty { return parts.joined(separator: " · ") }
-        }
-        if section.via == "antigravity" {
-            return "Antigravity"
-        }
-        return nil
+        if let issue { return issue }
+        return section.windows.isEmpty ? "no report" : "not signed in"
+    }
+
+    private var attribution: String? {
+        guard origin == .fleet else { return nil }
+        let source = driving?.window.source?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let observed = driving?.observedAt.map { "reported \($0.formatted(date: .omitted, time: .shortened))" }
+        let parts = [source, observed].compactMap { $0 }.filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            PlatformLogo(providerKey: section.providerKey, size: 20)
-                .frame(width: 22, height: 22)
-
+        HStack(spacing: 0) {
+            PlatformLogo(providerKey: section.providerKey, size: 16)
+                .frame(width: 16, height: 16)
+            Spacer().frame(width: 6)
             VStack(alignment: .leading, spacing: 1) {
                 Text(section.providerLabel)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
-                if let sub = subtitleText {
-                    Text(sub)
-                        .font(.system(size: 8))
+                    .truncationMode(.tail)
+                if let attribution {
+                    Text(attribution)
+                        .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                 }
             }
-            .frame(width: 88, alignment: .leading)
-
-            Spacer(minLength: 2)
-
-            if primaryWindows.isEmpty {
-                Text(issue ?? "Unavailable")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            .frame(width: 136, alignment: .leading)
+            Spacer().frame(width: 8)
+            bar
+                .frame(width: 56, height: 3)
+            Spacer().frame(width: 8)
+            if percent != nil || driving?.remainingPercent != nil {
+                Text(percent.map { "\(Int($0.rounded()))%" } ?? "—")
+                    .font(.system(size: 15, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(tint)
+                    .frame(width: 40, alignment: .trailing)
+                Spacer().frame(width: 8)
+                trailingColumn
+                    .frame(width: 58, alignment: .trailing)
             } else {
-                HStack(spacing: 6) {
-                    ForEach(Array(primaryWindows.prefix(3)), id: \.window.id) { snapshot in
-                        CompactPopoverQuotaPill(snapshot: snapshot, now: now, sourceFailed: issue != nil)
-                    }
+                trailingColumn
+                    .frame(width: 106, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, Metrics.glanceGutter)
+        .frame(height: origin == .fleet ? Metrics.glanceFleetRowHeight : Metrics.glanceLocalRowHeight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(section.providerLabel)
+        .accessibilityValue(spokenValue)
+    }
+
+    @ViewBuilder
+    private var trailingColumn: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(trailingText)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            if origin == .fleet {
+                StatusBadge(kind: .fleet)
+            }
+        }
+    }
+
+    private var bar: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.track)
+                if let percent {
+                    Capsule().fill(tint)
+                        .frame(width: geometry.size.width * CGFloat(min(max(percent, 0), 100)) / 100)
                 }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline))
+        .clipShape(Capsule())
+    }
+
+    private var spokenValue: String {
+        var parts: [String] = []
+        if let percent { parts.append("\(Int(percent.rounded())) percent remaining") }
+        else { parts.append("no reading") }
+        if let driving, let reset = driving.resetAt, percent != nil {
+            parts.append(resetCountdown(reset, now: now).lowercased())
+        }
+        switch origin {
+        case .fleet: parts.append("from the fleet")
+        case .local: parts.append(isLive ? "live" : "last report")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
-struct CompactPopoverQuotaPill: View {
-    let snapshot: QuotaWindowSnapshot
-    let now: Date
-    let sourceFailed: Bool
-
-    private var color: Color {
-        quotaStatusColor(for: snapshot, sourceFailed: sourceFailed)
-    }
-
-    private var resetCountdownText: String? {
-        guard let reset = snapshot.resetAt else { return nil }
-        let text = compactResetCountdown(reset, now: now)
-        return text.isEmpty ? nil : text
-    }
+/// Shown below the platform list whenever neither push nor pull is configured.
+/// Glance is the surface that actually gets opened, so this is where fleet sync
+/// has to announce itself.
+struct FleetSetupRow: View {
+    var action: () -> Void
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            HStack(spacing: 3) {
-                Text(compactWindowName(snapshot.window.label))
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.secondary)
-
-                Text(snapshot.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(color)
-
-                if let resetText = resetCountdownText {
-                    Text(resetText)
-                        .font(.system(size: 8))
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.up.arrow.down.circle")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Theme.fleet)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Set Up Fleet Sync")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("Share this Mac's quota, or show your other machines here.")
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
             }
-
-            if let pct = snapshot.remainingPercent {
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.track)
-                    Capsule().fill(color).frame(width: 44 * CGFloat(min(max(pct, 0), 100)) / 100)
-                }
-                .frame(width: 44, height: 3)
-            }
+            .padding(.horizontal, 12)
+            .frame(height: Metrics.glanceCTARowHeight)
+            .frame(maxWidth: .infinity)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.fleet.opacity(0.4)))
         }
-        .padding(.horizontal, 5)
-        .padding(.vertical, 3)
-        .background(color.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .help("Set Up Fleet Sync")
+        .accessibilityLabel("Set Up Fleet Sync")
     }
+}
+
+/// Reset countdown without the "Resets in" prefix, for a 58pt column.
+func glanceResetCountdown(_ reset: Date?, now: Date) -> String {
+    guard let reset else { return "" }
+    let seconds = reset.timeIntervalSince(now)
+    guard seconds > 0 else { return "due" }
+    let minutes = max(1, Int(ceil(seconds / 60)))
+    if minutes >= 1440 { return "\(minutes / 1440)d \((minutes % 1440) / 60)h" }
+    if minutes >= 60 { return "\(minutes / 60)h \(minutes % 60)m" }
+    return "\(minutes)m"
 }

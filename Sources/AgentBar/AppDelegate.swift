@@ -36,10 +36,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         configureMenu()
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 410, height: 600)
         popover.contentViewController = NSHostingController(rootView:
-            QuotaPopover(model: model, openMonitor: { [weak self] in self?.showMonitor() },
-                         openSettings: { [weak self] in self?.showSettings() }))
+            GlancePopover(model: model, openConsole: { [weak self] page in
+                self?.showConsole(page: page)
+            }))
         model.$displayMode.removeDuplicates().sink { [weak self] mode in
             self?.apply(mode)
         }.store(in: &subscriptions)
@@ -128,9 +128,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let button = statusItem?.button else { showMonitor(); return }
         if popover.isShown { popover.performClose(nil) }
         else {
+            // Sized immediately before every show, from the expected provider
+            // count, so the popover cannot resize while it is open.
+            popover.contentSize = NSSize(width: Metrics.glanceWidth,
+                                         height: QuotaGlanceMetrics.popoverHeight(for: model))
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    /// Temporary bridge until the Console lands in a later step.
+    func showConsole(page: ConsolePage?) {
+        if let page, page.isSettings { showSettings() } else { showMonitor() }
     }
 
     @objc func showMonitor() {

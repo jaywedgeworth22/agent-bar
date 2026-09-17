@@ -343,3 +343,98 @@ func compactResetCountdown(_ reset: Date?, now: Date) -> String {
     if minutes >= 60 { return "\(minutes / 60)h" }
     return "\(minutes)m"
 }
+
+/// The one badge slot: `LIVE`, `LAST REPORT` or `FLEET`.  A pulled window is by
+/// definition somebody else's observation, so it never claims to be live.
+struct StatusBadge: View {
+    enum Kind { case live, lastReport, fleet }
+    let kind: Kind
+
+    private var text: String {
+        switch kind {
+        case .live: return "LIVE"
+        case .lastReport: return "LAST REPORT"
+        case .fleet: return "FLEET"
+        }
+    }
+
+    private var color: Color {
+        switch kind {
+        case .live: return Theme.accent
+        case .lastReport: return Theme.warning
+        case .fleet: return Theme.fleet
+        }
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9, weight: .bold))
+            .tracking(0.6)
+            .foregroundStyle(color)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+            .accessibilityHidden(true)
+    }
+}
+
+extension QuotaPlatformSection {
+    /// The single subtitle rule, replacing three near-identical copies that
+    /// disagreed about the Antigravity fallback.
+    func displaySubtitle(customInfo: PlatformCustomInfo?) -> String? {
+        if let custom = customInfo, !custom.customSubtitle.isEmpty {
+            return custom.customSubtitle
+        }
+        if let custom = customInfo, custom.showCostAndRenewal {
+            let parts = [custom.planName,
+                         custom.costUsd,
+                         custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"]
+                .filter { !$0.isEmpty }
+            if !parts.isEmpty { return parts.joined(separator: " · ") }
+        }
+        if via == "antigravity" { return "Antigravity subscription" }
+        if let plan = windows.compactMap(\.window.planName).first, !plan.isEmpty { return plan }
+        return nil
+    }
+
+    /// The window a one-line row speaks for: whichever is closest to its cap.
+    var drivingWindow: QuotaWindowSnapshot? {
+        let primary = windows.filter { !$0.window.isSupplementaryVideoQuota }
+        return primary.filter { $0.remainingPercent != nil }
+            .min { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) }
+            ?? primary.first
+    }
+
+    /// The lowest remaining percentage across the windows a sidebar row summarises.
+    var minimumRemainingPercent: Double? {
+        windows.filter { $0.isFresh && !$0.window.isSupplementaryVideoQuota }
+            .compactMap(\.remainingPercent)
+            .min()
+    }
+}
+
+/// Glance's height is computed from the EXPECTED provider count rather than the
+/// reporting count, so the popover cannot resize under the pointer when a
+/// platform appears or disappears between refreshes.
+enum QuotaGlanceMetrics {
+    @MainActor
+    static func popoverHeight(for model: MonitorModel) -> CGFloat {
+        guard model.localEnabled || model.serverEnabled else {
+            return Metrics.glanceMinHeight
+        }
+        let fleetCount = model.originByProvider.values.filter { $0 == .fleet }.count
+        let reported = Set(model.sections.map(\.providerKey))
+        let expectedCount = Set(expectedQuotaProviderKeys).union(reported).count
+        let localRows = max(0, expectedCount - fleetCount)
+        let groups = fleetCount > 0 ? 2 : 1
+        let ctaRows = (!model.syncEnabled && !model.serverEnabled) ? 1 : 0
+
+        let content = CGFloat(groups) * Metrics.glanceGroupHeaderHeight
+            + CGFloat(localRows) * Metrics.glanceLocalRowHeight
+            + CGFloat(fleetCount) * Metrics.glanceFleetRowHeight
+            + CGFloat(ctaRows) * (Metrics.glanceCTARowHeight + 12)
+            + (fleetCount > 0 ? 12 : 0)
+        let total = Metrics.glanceHeaderHeight + Metrics.glanceFooterHeight + 18 + content
+        return min(Metrics.glanceMaxHeight(), max(Metrics.glanceMinHeight, total))
+    }
+}
