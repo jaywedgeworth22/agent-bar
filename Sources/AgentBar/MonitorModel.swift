@@ -245,6 +245,13 @@ final class MonitorModel: ObservableObject {
                 result.append((id: snapshot.window.id, label: label))
             }
         }
+        // A pinned window can be absent — a retired platform, a reader that is
+        // signed out, a refresh that failed.  Without a matching tag the Picker
+        // draws empty and says nothing, so the selection carries its own row
+        // rather than being silently dropped, which would lose the pin.
+        if !result.contains(where: { $0.id == menuBarQuotaSelection }) {
+            result.append((id: menuBarQuotaSelection, label: "Pinned quota unavailable"))
+        }
         return result
     }
 

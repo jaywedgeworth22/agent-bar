@@ -18,10 +18,17 @@ enum TokenStore {
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         // Never prompt: a locked Keychain must fail fast rather than block the
-        // refresh loop behind a system dialog.
+        // refresh loop behind a system dialog.  Both keys are set, because they
+        // cover different dialogs.  `LAContext.interactionNotAllowed` suppresses
+        // LocalAuthentication UI, but only for an item carrying an access
+        // control policy — these are added with none, so on macOS they resolve
+        // against the file-based login Keychain, whose unlock panel is governed
+        // by `kSecUseAuthenticationUIFail` instead.  Deprecated, and still the
+        // only thing that fails the query rather than showing that panel.
         let context = LAContext()
         context.interactionNotAllowed = true
         query[kSecUseAuthenticationContext as String] = context
+        query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
