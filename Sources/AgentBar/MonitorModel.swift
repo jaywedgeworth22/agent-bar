@@ -41,6 +41,24 @@ public enum QuotaViewLayout: String, CaseIterable, Identifiable {
     }
 }
 
+/// Which appearance the app forces.  `system` follows the Mac's own setting.
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case light, dark, system
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .light: return "Light"
+        case .dark: return "Dark"
+        case .system: return "System"
+        }
+    }
+}
+
+/// Whether a provider's windows were read on this Mac or pulled from the fleet.
+enum QuotaOrigin: Equatable, Sendable {
+    case local, fleet
+}
+
 @MainActor
 final class MonitorModel: ObservableObject {
     @Published var displayMode: DisplayMode {
@@ -87,10 +105,23 @@ final class MonitorModel: ObservableObject {
     @Published private(set) var lastSyncTime: Date?
     @Published private(set) var lastSyncStatus: String?
     @Published private(set) var isSyncing = false
+    @Published private(set) var lastPullTime: Date?
+
+    // Presentation
+    @Published var appearance: AppAppearance {
+        didSet { defaults.set(appearance.rawValue, forKey: "appearance") }
+    }
+    @Published var keepConsoleInFront: Bool {
+        didSet { defaults.set(keepConsoleInFront, forKey: "consoleKeepInFront") }
+    }
+
+    /// Where each provider's windows came from on the last refresh.
+    @Published private(set) var originByProvider: [String: QuotaOrigin] = [:]
 
     private let defaults: UserDefaults
     private var localWindows: [QuotaWindow] = []
     private var serverWindows: [QuotaWindow] = []
+    private var fleetWindows: [QuotaWindow] = []
     private var refreshTimer: Timer?
     private var clockTimer: Timer?
     private var request: Task<Void, Never>?
@@ -112,15 +143,32 @@ final class MonitorModel: ObservableObject {
         }
         localEnabled = defaults.object(forKey: "localEnabled") as? Bool ?? true
         serverEnabled = defaults.bool(forKey: "serverEnabled")
-        let savedEndpoint = defaults.string(forKey: "endpoint") ?? "https://usage.jays.services/api/quota-windows"
-        endpoint = savedEndpoint
         hasSavedToken = defaults.bool(forKey: "hasSavedToken")
-
         syncEnabled = defaults.bool(forKey: "syncEnabled")
-        syncEndpoint = defaults.string(forKey: "syncEndpoint") ?? "https://usage.jays.services/api/ingest/usage"
-        syncFormat = QuotaSyncFormat(rawValue: defaults.string(forKey: "syncFormat") ?? "") ?? .usageMonitorV2
         hasSavedSyncToken = defaults.bool(forKey: "hasSavedSyncToken")
+
+        // Both endpoints now default to empty, so a fresh install never posts to
+        // anyone else's server.  An install that predates this change has no
+        // stored endpoint but does have a saved token, so the old default is
+        // written forward once and that install keeps working unchanged.
+        if defaults.string(forKey: "endpoint") == nil, defaults.bool(forKey: "hasSavedToken") {
+            defaults.set(Self.legacyPullEndpoint, forKey: "endpoint")
+        }
+        if defaults.string(forKey: "syncEndpoint") == nil, defaults.bool(forKey: "hasSavedSyncToken") {
+            defaults.set(Self.legacySyncEndpoint, forKey: "syncEndpoint")
+        }
+        endpoint = defaults.string(forKey: "endpoint") ?? ""
+        syncEndpoint = defaults.string(forKey: "syncEndpoint") ?? ""
+        syncFormat = QuotaSyncFormat(rawValue: defaults.string(forKey: "syncFormat") ?? "") ?? .usageMonitorV2
+
+        appearance = AppAppearance(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .light
+        keepConsoleInFront = defaults.bool(forKey: "consoleKeepInFront")
     }
+
+    /// The endpoints AgentBar shipped with before the defaults became empty.
+    /// Referenced only by the one-time migration in `init`.
+    private static let legacyPullEndpoint = "https://usage.jays.services/api/quota-windows"
+    private static let legacySyncEndpoint = "https://usage.jays.services/api/ingest/usage"
 
     var sections: [QuotaPlatformSection] {
         let base = response.platformSections(now: now)
@@ -229,6 +277,31 @@ final class MonitorModel: ObservableObject {
     func setCustomInfo(for providerKey: String, info: PlatformCustomInfo) {
         platformCustomInfo[providerKey] = info
     }
+
+    /// Live binding for the local-readers toggle.  Writing the default and
+    /// refreshing in one call is what lets the Settings toggle apply on the spot
+    /// instead of waiting for a save.
+    func setLocalEnabled(_ value: Bool) {
+        guard value != localEnabled else { return }
+        localEnabled = value
+        defaults.set(value, forKey: "localEnabled")
+        refresh()
+    }
+
+    /// The distinct `source` strings carried by fleet windows, sorted.  This is
+    /// every machine identity the payload actually supports: `QuotaWindow` has a
+    /// `source` and no host or producer field, so nothing else can be shown
+    /// without inventing it.
+    var fleetSourceLabels: [String] {
+        var seen = Set<String>()
+        for window in fleetWindows {
+            let value = (window.source ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty { seen.insert(value) }
+        }
+        return seen.sorted()
+    }
+
+    var fleetWindowCount: Int { fleetWindows.count }
 
     // MARK: - Server Pull Settings
 
@@ -434,6 +507,12 @@ final class MonitorModel: ObservableObject {
             let supplemental = self.serverWindows.filter { !localProviders.contains($0.canonicalProviderKey) }
             let serverProviders = Set(supplemental.map(\.canonicalProviderKey))
             let merged = self.localWindows.filter { !serverProviders.contains($0.canonicalProviderKey) } + supplemental
+            self.fleetWindows = supplemental
+            var origins: [String: QuotaOrigin] = [:]
+            for key in localProviders { origins[key] = .local }
+            for key in serverProviders { origins[key] = .fleet }
+            self.originByProvider = origins
+            if newServer != nil { self.lastPullTime = self.now }
             for provider in serverProviders {
                 self.issues[provider] = failure.map { "Server refresh failed. Showing the last report. \($0)" }
             }
