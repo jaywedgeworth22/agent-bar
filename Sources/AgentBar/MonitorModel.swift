@@ -373,6 +373,23 @@ final class MonitorModel: ObservableObject {
         refresh()
     }
 
+    /// Turns push sharing off without needing a valid endpoint.  Turning it on
+    /// always goes through `saveSyncSettings`, which validates the endpoint.
+    func disableSync() {
+        guard syncEnabled else { return }
+        syncEnabled = false
+        defaults.set(false, forKey: "syncEnabled")
+    }
+
+    /// Turns fleet pull off without needing a valid endpoint.  Turning it on
+    /// always goes through `saveConnection`, which validates the endpoint.
+    func disableServerPull() {
+        guard serverEnabled else { return }
+        serverEnabled = false
+        defaults.set(false, forKey: "serverEnabled")
+        refresh()
+    }
+
     /// The distinct origin labels carried by fleet windows, sorted.
     var fleetSourceLabels: [String] { fleetWindowGroups.map(\.title) }
 
