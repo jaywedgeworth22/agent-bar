@@ -1,3 +1,0 @@
-module QuotaCore {
-    header "/Users/jay/Code/agent-bar/.build/arm64-apple-macosx/debug/QuotaCore.build/include/QuotaCore-Swift.h"
-}
