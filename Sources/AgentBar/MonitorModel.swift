@@ -74,44 +74,6 @@ struct FleetGroup: Identifiable, Equatable {
     let rows: [DisplaySection]
 }
 
-/// The origin a pulled window came from.
-///
-/// The quota endpoint carries no host, producer or device field — only `source`
-/// and `sourceApp` — so that is the best machine identifier available, and
-/// inventing a richer one would mean inventing the data behind it.  If the
-/// payload ever grows a machine field, this is the one place to teach.
-enum FleetOrigin {
-    static func identity(of window: QuotaWindow) -> String {
-        let candidates = [window.source, window.sourceApp]
-        for candidate in candidates {
-            let value = (candidate ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !value.isEmpty { return value }
-        }
-        return "fleet"
-    }
-
-    /// Whether a pulled window is this Mac's own push coming back.  Such a
-    /// window belongs under This Mac and must never be duplicated under Fleet.
-    static func isOwnPush(_ window: QuotaWindow) -> Bool {
-        let identity = identity(of: window).lowercased()
-        let mine = [QuotaPublisher.producerId, QuotaPublisher.producerInstanceId]
-            .map { $0.lowercased() }
-            + [QuotaPublisher.producerInstanceId.lowercased()
-                .replacingOccurrences(of: ".local", with: "")]
-        return mine.contains(identity)
-    }
-
-    /// "antigravity-usage" reads as "Antigravity Usage" in a group header.
-    static func title(for identity: String) -> String {
-        identity
-            .replacingOccurrences(of: "_", with: " ")
-            .replacingOccurrences(of: "-", with: " ")
-            .split(separator: " ")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
-    }
-}
-
 @MainActor
 final class MonitorModel: ObservableObject {
     @Published var displayMode: DisplayMode {
@@ -626,14 +588,10 @@ final class MonitorModel: ObservableObject {
             // rendered under FLEET, grouped by its origin — the previous
             // "supplemental" filter dropped all of them on a Mac that reads
             // every provider locally, so a working pull showed nothing at all.
-            let ownPush = self.serverWindows.filter { FleetOrigin.isOwnPush($0) }
-            let others = self.serverWindows.filter { !FleetOrigin.isOwnPush($0) }
-            var grouped: [String: [QuotaWindow]] = [:]
-            for window in others {
-                grouped[FleetOrigin.identity(of: window), default: []].append(window)
-            }
-            self.fleetWindowGroups = grouped.keys.sorted().map {
-                FleetWindowGroup(id: $0, title: FleetOrigin.title(for: $0), windows: grouped[$0] ?? [])
+            let split = FleetOrigin.split(self.serverWindows)
+            let ownPush = split.ownPush
+            self.fleetWindowGroups = split.groups.map {
+                FleetWindowGroup(id: $0.id, title: $0.title, windows: $0.windows)
             }
 
             // This Mac's own push fills in only a provider no local reader
