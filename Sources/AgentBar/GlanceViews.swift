@@ -9,11 +9,11 @@ struct GlancePopover: View {
     @ObservedObject var model: MonitorModel
     var openConsole: (ConsolePage) -> Void
 
-    private var localSections: [QuotaPlatformSection] {
-        model.sections.filter { model.originByProvider[$0.providerKey] != .fleet }
+    private var localSections: [DisplaySection] {
+        model.displaySections.filter { model.originByProvider[$0.providerKey] != .fleet }
     }
-    private var fleetSections: [QuotaPlatformSection] {
-        model.sections.filter { model.originByProvider[$0.providerKey] == .fleet }
+    private var fleetSections: [DisplaySection] {
+        model.displaySections.filter { model.originByProvider[$0.providerKey] == .fleet }
     }
     private var showsFleetSetup: Bool { !model.syncEnabled && !model.serverEnabled }
     private var hasAnySource: Bool { model.localEnabled || model.serverEnabled }
@@ -69,10 +69,10 @@ struct GlancePopover: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             groupHeader("THIS MAC")
-            ForEach(localSections, id: \.providerKey) { section in
-                GlanceRow(section: section,
+            ForEach(localSections) { row in
+                GlanceRow(row: row,
                           now: model.now,
-                          issue: model.issues[section.providerKey],
+                          issue: model.issues[row.providerKey],
                           origin: .local)
             }
             if !fleetSections.isEmpty {
@@ -82,10 +82,10 @@ struct GlancePopover: View {
                         .frame(width: 2)
                     VStack(alignment: .leading, spacing: 0) {
                         groupHeader(fleetGroupTitle)
-                        ForEach(fleetSections, id: \.providerKey) { section in
-                            GlanceRow(section: section,
+                        ForEach(fleetSections) { row in
+                            GlanceRow(row: row,
                                       now: model.now,
-                                      issue: model.issues[section.providerKey],
+                                      issue: model.issues[row.providerKey],
                                       origin: .fleet)
                         }
                     }
@@ -179,24 +179,19 @@ struct GlancePopover: View {
 
 /// One platform, one line.  The only compact row type in the app.
 struct GlanceRow: View {
-    let section: QuotaPlatformSection
+    let row: DisplaySection
     let now: Date
     let issue: String?
     let origin: QuotaOrigin
 
-    private var primaryWindows: [QuotaWindowSnapshot] {
-        section.windows.filter { !$0.window.isSupplementaryVideoQuota }
-    }
+    private var section: QuotaPlatformSection { row.section }
 
-    /// The window the row speaks for: the one closest to its cap.
-    private var driving: QuotaWindowSnapshot? {
-        let withPercent = primaryWindows.filter { $0.remainingPercent != nil }
-        return withPercent.min { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) }
-            ?? primaryWindows.first
-    }
+    /// The window the row speaks for: the one closest to its cap, ignoring any
+    /// window whose percentage cannot mean anything.
+    private var driving: QuotaWindowSnapshot? { row.driving }
 
     private var percent: Double? {
-        issue == nil ? driving?.remainingPercent : nil
+        issue == nil ? row.remainingPercent : nil
     }
 
     private var tint: Color {
@@ -207,8 +202,8 @@ struct GlanceRow: View {
     private var isLive: Bool { issue == nil && section.hasFreshReport }
 
     private var trailingText: String {
-        if let driving, percent != nil {
-            let countdown = glanceResetCountdown(driving.resetAt, now: now)
+        if percent != nil {
+            let countdown = glanceResetCountdown(row.resetAt ?? driving?.resetAt, now: now)
             return countdown.isEmpty ? "no reset time" : countdown
         }
         if let issue { return issue }
@@ -229,7 +224,7 @@ struct GlanceRow: View {
                 .frame(width: 16, height: 16)
             Spacer().frame(width: 6)
             VStack(alignment: .leading, spacing: 1) {
-                Text(section.providerLabel)
+                Text(row.title)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -262,7 +257,7 @@ struct GlanceRow: View {
         .padding(.horizontal, Metrics.glanceGutter)
         .frame(height: origin == .fleet ? Metrics.glanceFleetRowHeight : Metrics.glanceLocalRowHeight)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(section.providerLabel)
+        .accessibilityLabel(row.title)
         .accessibilityValue(spokenValue)
     }
 
@@ -297,7 +292,7 @@ struct GlanceRow: View {
         var parts: [String] = []
         if let percent { parts.append("\(Int(percent.rounded())) percent remaining") }
         else { parts.append("no reading") }
-        if let driving, let reset = driving.resetAt, percent != nil {
+        if let reset = row.resetAt ?? driving?.resetAt, percent != nil {
             parts.append(resetCountdown(reset, now: now).lowercased())
         }
         switch origin {

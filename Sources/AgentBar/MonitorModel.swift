@@ -184,9 +184,28 @@ final class MonitorModel: ObservableObject {
             return a.providerLabel < b.providerLabel
         }
     }
+    /// One row per platform, except Antigravity, which is one row per pool.
+    /// Every surface that lists platforms reads this rather than `sections`.
+    var displaySections: [DisplaySection] {
+        sections.flatMap { DisplaySection.rows(for: $0, now: now) }
+    }
+
+    /// Windows whose percentage is real but meaningless: a five-hour Antigravity
+    /// window under a pool whose weekly cap is already spent.  They are shown as
+    /// "n/a" and never counted as near cap or picked as the lowest.
+    var maskedWindowIds: Set<String> {
+        AntigravityQuotaGroups.maskedWindowIds(
+            in: sections.filter { $0.providerKey == AntigravityDisplay.providerKey }
+                .flatMap { $0.windows.map(\.window) },
+            now: now)
+    }
+
     var freshWindows: [QuotaWindowSnapshot] {
-        sections.flatMap(\.windows).filter {
-            $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota && issues[$0.window.canonicalProviderKey] == nil
+        let masked = maskedWindowIds
+        return sections.flatMap(\.windows).filter {
+            $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota
+                && !masked.contains($0.window.id)
+                && issues[$0.window.canonicalProviderKey] == nil
         }
     }
     var reportingCount: Int { Set(freshWindows.map { $0.window.canonicalProviderKey }).count }
@@ -199,14 +218,22 @@ final class MonitorModel: ObservableObject {
             (id: "auto_lowest_active", label: "Lowest active quota"),
             (id: "auto_lowest", label: "Lowest quota"),
         ]
-        for section in sections {
-            let windows = section.windows.filter { $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota }
+        for row in displaySections {
+            let windows = row.section.windows.filter {
+                $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota && !row.isMasked($0)
+            }
             for snapshot in windows {
-                let label = "\(section.providerLabel) · \(snapshot.window.label)"
+                let label = "\(row.title) · \(AntigravityDisplay.windowLabel(snapshot.window.label))"
                 result.append((id: snapshot.window.id, label: label))
             }
         }
         return result
+    }
+
+    /// The row a window belongs to, so the menu bar and the Next Reset tile can
+    /// name the Antigravity pool rather than the platform.
+    func displayRow(for window: QuotaWindow) -> DisplaySection? {
+        displaySections.first { $0.section.windows.contains { $0.window.id == window.id } }
     }
 
     /// The window that should drive the menu bar display.
@@ -232,9 +259,11 @@ final class MonitorModel: ObservableObject {
 
     var menuBarDetail: String {
         guard let target = menuBarTargetSnapshot else { return "No current quota report" }
-        let providerLabel = sections.first { $0.providerKey == target.window.canonicalProviderKey }?.providerLabel ?? target.window.provider
+        let title = displayRow(for: target.window)?.title
+            ?? sections.first { $0.providerKey == target.window.canonicalProviderKey }?.providerLabel
+            ?? target.window.provider
         let pct = target.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—"
-        return "\(providerLabel), \(target.window.label): \(pct) remaining"
+        return "\(title), \(windowCadenceName(target.window)): \(pct) remaining"
     }
 
     func start() {

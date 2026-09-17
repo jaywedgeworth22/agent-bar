@@ -80,7 +80,16 @@ func quotaStatusColor(for snapshot: QuotaWindowSnapshot, sourceFailed: Bool) -> 
 }
 
 func compactWindowName(_ label: String) -> String {
-    let lower = label.lowercased()
+    let display = AntigravityDisplay.windowLabel(label)
+    // An Antigravity window says which pool it belongs to.  A compact row
+    // shortens the cadence and keeps the pool, because "5h" alone is what made
+    // two different pools look like one number.
+    if let pool = AntigravityDisplay.poolName(in: display), let separator = display.range(of: " · ") {
+        let cadence = String(display[separator.upperBound...])
+        let shortCadence = cadence.lowercased().contains("5") ? "5h" : cadence
+        return "\(pool) · \(shortCadence)"
+    }
+    let lower = display.lowercased()
     if lower.contains("5-hour") || lower.contains("5 hour") { return "5h" }
     if lower.contains("7-day") || lower.contains("7 day") { return "7d" }
     if lower.contains("weekly") { return "Weekly" }
@@ -92,7 +101,7 @@ func compactWindowName(_ label: String) -> String {
     if lower.contains("gemini pro") || lower.contains("pro") { return "Pro" }
     if lower.contains("flash") { return "Flash" }
     if lower.contains("opus") { return "Opus" }
-    return label.components(separatedBy: " ").first ?? label
+    return display.components(separatedBy: " ").first ?? display
 }
 
 func compactResetCountdown(_ reset: Date?, now: Date) -> String {
@@ -198,7 +207,10 @@ enum QuotaGlanceMetrics {
         }
         let fleetCount = model.originByProvider.values.filter { $0 == .fleet }.count
         let reported = Set(model.sections.map(\.providerKey))
-        let expectedCount = Set(expectedQuotaProviderKeys).union(reported).count
+        let expectedKeys = Set(expectedQuotaProviderKeys).union(reported)
+        // Antigravity draws one row per model pool, so it counts twice.
+        let expectedCount = expectedKeys.count
+            + (expectedKeys.contains(AntigravityDisplay.providerKey) ? 1 : 0)
         let localRows = max(0, expectedCount - fleetCount)
         let groups = fleetCount > 0 ? 2 : 1
         let ctaRows = (!model.syncEnabled && !model.serverEnabled) ? 1 : 0
@@ -247,7 +259,7 @@ struct SummaryTile: View {
 /// A bordered container with a header and one or more `QuotaRow`s.  Cards exist
 /// only in the Console detail pane; rows exist only in Glance and the sidebar.
 struct PlatformCard: View {
-    let section: QuotaPlatformSection
+    let row: DisplaySection
     let now: Date
     let issue: String?
     let compact: Bool
@@ -256,6 +268,8 @@ struct PlatformCard: View {
     var customInfo: PlatformCustomInfo? = nil
     @State private var expanded = false
     @State private var videoExpanded = false
+
+    private var section: QuotaPlatformSection { row.section }
 
     private var primaryWindows: [QuotaWindowSnapshot] {
         section.windows.filter { !$0.window.isSupplementaryVideoQuota }
@@ -328,7 +342,8 @@ struct PlatformCard: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
                       alignment: .leading, spacing: 16) {
                 ForEach(displayedWindows, id: \.window.id) { snapshot in
-                    QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
+                    QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact,
+                             masked: row.isMasked(snapshot))
                         .padding(12)
                         .background(Theme.background, in: RoundedRectangle(cornerRadius: 8))
                 }
@@ -336,7 +351,8 @@ struct PlatformCard: View {
         } else {
             ForEach(Array(displayedWindows.enumerated()), id: \.offset) { index, snapshot in
                 if index > 0 { Divider() }
-                QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
+                QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact,
+                         masked: row.isMasked(snapshot))
             }
         }
         if primaryWindows.count > 4 {
@@ -376,12 +392,19 @@ struct QuotaRow: View {
     let now: Date
     let sourceFailed: Bool
     let compact: Bool
+    /// True for a five-hour Antigravity window whose pool's weekly cap is spent.
+    /// Its percentage is real and meaningless, so it is never shown as a number.
+    var masked = false
 
-    private var tint: Color { quotaStatusColor(for: snapshot, sourceFailed: sourceFailed) }
+    private var tint: Color {
+        masked ? .secondary : quotaStatusColor(for: snapshot, sourceFailed: sourceFailed)
+    }
     private var percentText: String {
-        snapshot.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—"
+        if masked { return AntigravityDisplay.maskedValue }
+        return snapshot.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—"
     }
     private var stateText: String {
+        if masked { return "not applicable" }
         if snapshot.remainingPercent == nil { return "unavailable" }
         return snapshot.isFresh && !sourceFailed ? "remaining" : "last reported"
     }
@@ -389,7 +412,8 @@ struct QuotaRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline) {
-                Text(compact ? compactWindowName(snapshot.window.label) : snapshot.window.label)
+                Text(compact ? compactWindowName(snapshot.window.label)
+                             : AntigravityDisplay.windowLabel(snapshot.window.label))
                     .font(.system(size: 11, weight: .medium))
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 10)
@@ -403,7 +427,12 @@ struct QuotaRow: View {
                 }
             }
 
-            if let pacing = snapshot.pacing(now: now), !compact {
+            if masked {
+                Text(AntigravityDisplay.maskedCaption)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if let pacing = snapshot.pacing(now: now), !compact {
                 pacingBar(pacing)
             } else if let remaining = snapshot.remainingPercent {
                 GeometryReader { geometry in

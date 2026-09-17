@@ -166,7 +166,7 @@ struct ConsoleView: View {
         switch state.page {
         case .allPlatforms: return "All Platforms"
         case .platform(let key):
-            return model.sections.first { $0.providerKey == key }?.providerLabel ?? key
+            return model.displaySections.first { $0.id == key }?.title ?? key
         default: return state.page.settingsTitle
         }
     }
@@ -246,8 +246,8 @@ struct ConsoleSidebar: View {
                 Section {
                     Label("All Platforms", systemImage: "square.grid.2x2")
                         .tag(ConsolePage.allPlatforms.storageKey)
-                    ForEach(model.sections, id: \.providerKey) { section in
-                        quotaRow(section).tag(ConsolePage.platform(section.providerKey).storageKey)
+                    ForEach(model.displaySections) { row in
+                        quotaRow(row).tag(ConsolePage.platform(row.id).storageKey)
                     }
                 } header: {
                     Eyebrow("QUOTAS")
@@ -271,19 +271,20 @@ struct ConsoleSidebar: View {
 
     /// Quotas rows carry a trailing value; Settings rows do not.  Two different
     /// row views is what stops `.listStyle(.sidebar)` aligning them identically.
-    private func quotaRow(_ section: QuotaPlatformSection) -> some View {
+    private func quotaRow(_ row: DisplaySection) -> some View {
         HStack(spacing: 8) {
-            PlatformLogo(providerKey: section.providerKey, size: 16)
-            Text(section.providerLabel)
+            PlatformLogo(providerKey: row.providerKey, size: 16)
+            Text(row.title)
                 .font(.system(size: 13, weight: .medium))
                 .lineLimit(1)
+                .truncationMode(.tail)
             Spacer(minLength: 4)
-            if model.issues[section.providerKey] != nil {
+            if model.issues[row.providerKey] != nil {
                 Image(systemName: "exclamationmark.circle")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.warning)
                     .accessibilityLabel("Quota unavailable")
-            } else if let remaining = section.minimumRemainingPercent {
+            } else if let remaining = row.remainingPercent {
                 Text("\(Int(remaining.rounded()))%")
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundStyle(.secondary)
@@ -324,15 +325,15 @@ struct AllPlatformsPage: View {
     @ObservedObject var state: ConsoleState
     let query: String
 
-    private var matching: [QuotaPlatformSection] {
-        model.sections.filter {
-            query.isEmpty || $0.providerLabel.localizedCaseInsensitiveContains(query)
+    private var matching: [DisplaySection] {
+        model.displaySections.filter {
+            query.isEmpty || $0.title.localizedCaseInsensitiveContains(query)
         }
     }
-    private var localSections: [QuotaPlatformSection] {
+    private var localSections: [DisplaySection] {
         matching.filter { model.originByProvider[$0.providerKey] != .fleet }
     }
-    private var fleetSections: [QuotaPlatformSection] {
+    private var fleetSections: [DisplaySection] {
         matching.filter { model.originByProvider[$0.providerKey] == .fleet }
     }
     private var compact: Bool { model.viewLayout == .summary }
@@ -352,15 +353,15 @@ struct AllPlatformsPage: View {
                     Text("Percent remaining").font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                    ForEach(localSections, id: \.providerKey) { section in
-                        card(section, origin: .local)
+                    ForEach(localSections) { row in
+                        card(row, origin: .local)
                     }
                 }
                 if model.serverEnabled { fleetGroup }
             }
 
             Text("Quota windows are independent." + sentenceGap
-                 + "Antigravity reports a single subscription across its models.")
+                 + "Antigravity meters two model pools separately, so each pool has its own row.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -394,9 +395,11 @@ struct AllPlatformsPage: View {
     /// what is about to reset rather than only when.
     private var nextResetDetail: String {
         guard let next = model.nextReset else { return "no reset reported" }
-        for section in model.sections {
-            for snapshot in section.windows where snapshot.resetAt == next {
-                return "\(section.providerLabel), \(compactWindowName(snapshot.window.label))"
+        for row in model.displaySections {
+            for snapshot in row.section.windows where snapshot.resetAt == next && !row.isMasked(snapshot) {
+                // An Antigravity row names its pool, so the tile says which
+                // pool is about to reset rather than only "Antigravity".
+                return "\(row.title), \(windowCadenceName(snapshot.window))"
             }
         }
         return next.formatted(date: .omitted, time: .shortened)
@@ -462,8 +465,8 @@ struct AllPlatformsPage: View {
                         .foregroundStyle(.secondary)
                 } else {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                        ForEach(fleetSections, id: \.providerKey) { section in
-                            card(section, origin: .fleet)
+                        ForEach(fleetSections) { row in
+                            card(row, origin: .fleet)
                         }
                     }
                 }
@@ -477,14 +480,14 @@ struct AllPlatformsPage: View {
         return labels.isEmpty ? "Fleet" : "Fleet · \(labels.joined(separator: ", "))"
     }
 
-    private func card(_ section: QuotaPlatformSection, origin: QuotaOrigin) -> some View {
-        PlatformCard(section: section,
+    private func card(_ row: DisplaySection, origin: QuotaOrigin) -> some View {
+        PlatformCard(row: row,
                      now: model.now,
-                     issue: model.issues[section.providerKey],
+                     issue: model.issues[row.providerKey],
                      compact: compact,
                      wide: false,
                      origin: origin,
-                     customInfo: model.platformCustomInfo[section.providerKey])
+                     customInfo: model.platformCustomInfo[row.providerKey])
     }
 }
 
@@ -500,20 +503,26 @@ struct PlatformDetailPage: View {
     @State private var renewalDate = ""
     @State private var showCostAndRenewal = false
 
-    private var section: QuotaPlatformSection? {
-        model.sections.first { $0.providerKey == providerKey }
+    /// The page's own row.  A pool-qualified key such as
+    /// `google-antigravity:gemini` selects one Antigravity pool.
+    private var row: DisplaySection? {
+        model.displaySections.first { $0.id == providerKey }
+            ?? model.displaySections.first { $0.providerKey == providerKey }
     }
+    /// Custom display fields are per platform, so both Antigravity pools share
+    /// the platform's own key rather than the pool-qualified one.
+    private var customInfoKey: String { row?.providerKey ?? providerKey }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            if let section {
-                PlatformCard(section: section,
+            if let row {
+                PlatformCard(row: row,
                              now: model.now,
-                             issue: model.issues[providerKey],
+                             issue: model.issues[row.providerKey],
                              compact: false,
                              wide: true,
-                             origin: model.originByProvider[providerKey] ?? .local,
-                             customInfo: model.platformCustomInfo[providerKey])
+                             origin: model.originByProvider[row.providerKey] ?? .local,
+                             customInfo: model.platformCustomInfo[row.providerKey])
             } else {
                 Text("Quota unavailable")
                     .font(.system(size: 13, weight: .medium))
@@ -566,7 +575,7 @@ struct PlatformDetailPage: View {
     }
 
     private func load() {
-        let existing = model.platformCustomInfo[providerKey] ?? PlatformCustomInfo()
+        let existing = model.platformCustomInfo[customInfoKey] ?? PlatformCustomInfo()
         customSubtitle = existing.customSubtitle
         planName = existing.planName
         costUsd = existing.costUsd
@@ -575,7 +584,7 @@ struct PlatformDetailPage: View {
     }
 
     private func save() {
-        model.setCustomInfo(for: providerKey,
+        model.setCustomInfo(for: customInfoKey,
                             info: PlatformCustomInfo(customSubtitle: customSubtitle,
                                                      planName: planName,
                                                      costUsd: costUsd,
