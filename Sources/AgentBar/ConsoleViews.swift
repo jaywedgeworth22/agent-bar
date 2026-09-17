@@ -2,265 +2,6 @@ import AppKit
 import QuotaCore
 import SwiftUI
 
-struct MonitorDashboard: View {
-    @ObservedObject var model: MonitorModel
-    var openSettings: () -> Void
-    @State private var selected = "all"
-    @State private var query = ""
-
-    private var visibleSections: [QuotaPlatformSection] {
-        model.sections.filter { section in
-            (selected == "all" || selected == section.providerKey)
-                && (query.isEmpty || section.providerLabel.localizedCaseInsensitiveContains(query))
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            sidebar
-            Divider()
-            VStack(alignment: .leading, spacing: 0) {
-                header
-                Divider()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        summary
-                        if let error = model.serverError {
-                            Label("Server: \(error)  Local readings remain available.", systemImage: "exclamationmark.triangle")
-                                .font(.callout).foregroundStyle(Theme.warning)
-                        }
-                        if let error = model.handoffError {
-                            Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Theme.warning)
-                        }
-                        if !model.localEnabled && !model.serverEnabled {
-                            ContentUnavailableView("Connect a Quota Source", systemImage: "link",
-                                                   description: Text("Enable local agent readings or connect your Usage Monitor server in Settings."))
-                        }
-                        HStack {
-                            Text(selected == "all" ? "Subscription Quotas" : visibleSections.first?.providerLabel ?? "Subscription Quotas")
-                                .font(.title3.bold())
-                            Spacer()
-                            Text("Percent remaining").font(.caption).foregroundStyle(.secondary)
-                        }
-                        if model.viewLayout == .summary && selected == "all" {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), alignment: .top)], alignment: .leading, spacing: 12) {
-                                ForEach(visibleSections, id: \.providerKey) { section in
-                                    CompactDashboardPlatformCard(
-                                        section: section,
-                                        now: model.now,
-                                        issue: model.issues[section.providerKey],
-                                        customInfo: model.platformCustomInfo[section.providerKey]
-                                    )
-                                }
-                            }
-                        } else {
-                            LazyVGrid(columns: selected == "all" ? [GridItem(.adaptive(minimum: 290), alignment: .top)] : [GridItem(.flexible())], alignment: .leading, spacing: 16) {
-                                ForEach(visibleSections, id: \.providerKey) { section in
-                                    PlatformCard(
-                                        section: section,
-                                        now: model.now,
-                                        issue: model.issues[section.providerKey],
-                                        compact: false,
-                                        wide: selected != "all",
-                                        customInfo: model.platformCustomInfo[section.providerKey]
-                                    )
-                                }
-                            }
-                        }
-                        Text("Each window is an independent cap. A model offered through Antigravity uses the Antigravity subscription. Unreported limits stay unavailable.")
-                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(26)
-                }
-                .background(Theme.background)
-                .id(selected + query)
-            }
-        }
-        .foregroundStyle(Theme.ink)
-        .tint(Theme.accent)
-        
-    }
-
-    private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 9) {
-                Image(systemName: "gauge.with.dots.needle.50percent").font(.title2).foregroundStyle(Theme.accent)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("AgentBar").font(.headline)
-                    Text("AGENT SUBSCRIPTIONS").font(.system(size: 8, weight: .semibold, design: .rounded)).tracking(1.1).foregroundStyle(.secondary)
-                }
-            }.padding(.horizontal, 16).padding(.top, 24)
-            List(selection: $selected) {
-                Label("All Platforms", systemImage: "square.grid.2x2").tag("all")
-                Section("Platforms") {
-                    ForEach(model.sections, id: \.providerKey) { section in
-                        HStack(spacing: 8) {
-                            PlatformLogo(providerKey: section.providerKey, size: 17)
-                            Text(section.providerLabel)
-                            Spacer()
-                            if section.providerKey != "google-antigravity", model.issues[section.providerKey] == nil, let remaining = section.windows.filter({ $0.isFresh && !$0.window.isSupplementaryVideoQuota }).compactMap(\.remainingPercent).min() {
-                                Text("\(Int(remaining.rounded()))%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                            }
-                        }.tag(section.providerKey)
-                    }
-                }
-            }.listStyle(.sidebar).scrollContentBackground(.hidden)
-            VStack(alignment: .leading, spacing: 10) {
-                Label(model.localEnabled ? "Local Mac readings" : "Local readings off", systemImage: "desktopcomputer")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button {
-                    NSWorkspace.shared.open(URL(string: "https://usage.jays.services")!)
-                } label: { Label("Web Dashboard", systemImage: "arrow.up.right.square") }
-                    .buttonStyle(.plain).font(.caption)
-                Button(action: openSettings) { Label("Settings", systemImage: "gearshape") }
-                    .buttonStyle(.plain)
-            }.padding(18)
-        }
-        .frame(width: 208)
-        .background(Theme.surface)
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Agent Quotas").font(.system(size: 26, weight: .bold, design: .rounded))
-                Text("Your subscriptions, at a glance.").font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Picker("Layout", selection: $model.viewLayout) {
-                ForEach(QuotaViewLayout.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 170)
-            TextField("Find a platform", text: $query).textFieldStyle(.roundedBorder).frame(width: 145)
-                .accessibilityLabel("Find a platform")
-            Button { model.refresh() } label: {
-                Label(model.isRefreshing ? "Refreshing" : "Refresh", systemImage: "arrow.clockwise")
-            }.disabled(model.isRefreshing)
-        }.padding(22).background(Theme.surface)
-    }
-
-    private var summary: some View {
-        HStack(spacing: 12) {
-            SummaryTile(label: "Reporting", value: "\(model.reportingCount) / \(model.sections.count)", symbol: "antenna.radiowaves.left.and.right", detail: "Platforms with current readings")
-            SummaryTile(label: "Near Cap", value: "\(model.nearCapCount)", symbol: "gauge.with.dots.needle.100percent", detail: "Windows at 20% or less")
-            SummaryTile(label: "Next Reset", value: model.nextReset.map { $0.formatted(date: .omitted, time: .shortened) } ?? "—", symbol: "clock", detail: model.nextReset.map { $0.formatted(.dateTime.month(.abbreviated).day()) } ?? "No current reset reported")
-        }
-    }
-}
-
-struct CompactDashboardPlatformCard: View {
-    let section: QuotaPlatformSection
-    let now: Date
-    let issue: String?
-    var customInfo: PlatformCustomInfo? = nil
-
-    private var primaryWindows: [QuotaWindowSnapshot] {
-        section.windows.filter { !$0.window.isSupplementaryVideoQuota }
-    }
-
-    private var subtitleText: String? {
-        if let custom = customInfo, !custom.customSubtitle.isEmpty {
-            return custom.customSubtitle
-        }
-        if let custom = customInfo, custom.showCostAndRenewal {
-            let parts = [custom.planName, custom.costUsd, custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"].filter { !$0.isEmpty }
-            if !parts.isEmpty { return parts.joined(separator: " · ") }
-        }
-        if section.via == "antigravity" {
-            return "Antigravity subscription"
-        }
-        return nil
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                PlatformLogo(providerKey: section.providerKey, size: 22)
-                    .frame(width: 24, height: 24)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(section.providerLabel)
-                        .font(.system(size: 13, weight: .bold))
-                        .lineLimit(1)
-                    if let sub = subtitleText {
-                        Text(sub).font(.system(size: 9)).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-                if !section.windows.isEmpty {
-                    Text(issue == nil && section.hasFreshReport ? "LIVE" : "LAST REPORT")
-                        .font(.system(size: 8, weight: .bold)).tracking(0.6)
-                        .foregroundStyle(issue == nil && section.hasFreshReport ? Theme.accent : Theme.warning)
-                }
-            }
-
-            if primaryWindows.isEmpty {
-                Text(issue ?? "Quota unavailable")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 4)
-            } else {
-                VStack(spacing: 6) {
-                    ForEach(Array(primaryWindows.prefix(3)), id: \.window.id) { snapshot in
-                        CompactDashboardQuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil)
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline))
-    }
-}
-
-struct CompactDashboardQuotaRow: View {
-    let snapshot: QuotaWindowSnapshot
-    let now: Date
-    let sourceFailed: Bool
-
-    private var color: Color {
-        quotaStatusColor(for: snapshot, sourceFailed: sourceFailed)
-    }
-
-    var body: some View {
-        VStack(spacing: 3) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(snapshot.window.label)
-                    .font(.system(size: 11, weight: .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                Text(snapshot.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(color)
-            }
-            if let pct = snapshot.remainingPercent {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.track)
-                        Capsule().fill(color).frame(width: geo.size.width * CGFloat(min(max(pct, 0), 100)) / 100)
-                    }
-                }
-                .frame(height: 3)
-            }
-            HStack {
-                if let reset = snapshot.resetAt {
-                    Text(resetCountdown(reset, now: now))
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                if let remaining = snapshot.window.absoluteRemaining, let limit = snapshot.window.absoluteLimit,
-                   remaining.isFinite, limit.isFinite, remaining >= 0, limit > 0, let unit = snapshot.window.quotaUnit {
-                    Text("\(remaining.formatted(.number.precision(.fractionLength(0...1)))) / \(limit.formatted(.number.precision(.fractionLength(0...1)))) \(unit)")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
-                }
-            }
-        }
-    }
-}
-
 /// One selection type for the sidebar, the detail pane and every deep link from
 /// Glance, the app menu and the status menu.
 enum ConsolePage: Hashable {
@@ -305,15 +46,530 @@ enum ConsolePage: Hashable {
         }
     }
 
-    var title: String {
+    /// Sidebar and toolbar label.  A platform page is titled by the model.
+    var settingsTitle: String {
         switch self {
-        case .allPlatforms: return "All Platforms"
-        case .platform(let providerKey): return providerKey
         case .settingsMenuBar: return "Menu Bar"
         case .settingsPlatforms: return "Platforms"
         case .settingsSourcesFleet: return "Sources & Fleet"
         case .settingsAppearance: return "Appearance"
         case .settingsAbout: return "About"
+        default: return "AgentBar"
         }
     }
+
+    var symbol: String {
+        switch self {
+        case .settingsMenuBar: return "menubar.rectangle"
+        case .settingsPlatforms: return "square.grid.2x2"
+        case .settingsSourcesFleet: return "arrow.up.arrow.down.circle"
+        case .settingsAppearance: return "circle.lefthalf.filled"
+        case .settingsAbout: return "info.circle"
+        default: return "square.grid.2x2"
+        }
+    }
+
+    static let settingsPages: [ConsolePage] = [
+        .settingsMenuBar, .settingsPlatforms, .settingsSourcesFleet, .settingsAppearance, .settingsAbout,
+    ]
+}
+
+/// Selection state shared between AppKit (which owns the window and its title)
+/// and SwiftUI (which owns the sidebar and detail pane).
+@MainActor
+final class ConsoleState: ObservableObject {
+    @Published var page: ConsolePage = .allPlatforms {
+        didSet {
+            guard page != oldValue else { return }
+            if page.isSettings {
+                defaults.set(page.storageKey, forKey: "consoleLastSettingsPage")
+            }
+            defaults.set(page.storageKey, forKey: "consoleLastPage")
+        }
+    }
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        // A Settings page is a destination, never a place to resume.
+        let stored = defaults.string(forKey: "consoleLastPage").flatMap(ConsolePage.fromStorageKey)
+        page = (stored?.isSettings == false ? stored : nil) ?? .allPlatforms
+    }
+
+    var lastSettingsPage: ConsolePage {
+        defaults.string(forKey: "consoleLastSettingsPage")
+            .flatMap(ConsolePage.fromStorageKey)
+            .flatMap { $0.isSettings ? $0 : nil }
+            ?? .settingsMenuBar
+    }
+}
+
+/// The one window.  Deliberately a plain `HStack` rather than a
+/// `NavigationSplitView`: the sidebar is a two-section flat list that needs
+/// neither a collapse toggle nor animated column resizing, and a fixed 200pt
+/// column is exactly what the design asks for.
+struct ConsoleView: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var state: ConsoleState
+    @State private var query = ""
+    @FocusState private var searchFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ConsoleSidebar(model: model, state: state)
+                .frame(width: Metrics.sidebarWidth)
+            Divider()
+            detail
+        }
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.accent)
+        .background(Theme.background)
+    }
+
+    // MARK: - Detail
+
+    @ViewBuilder
+    private var detail: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            toolbar
+            Divider()
+            if model.isRefreshing {
+                Rectangle().fill(Theme.accent).frame(height: 2)
+                    .accessibilityHidden(true)
+            }
+            ScrollView {
+                switch state.page {
+                case .allPlatforms:
+                    AllPlatformsPage(model: model, state: state, query: query)
+                        .padding(Metrics.pagePadding)
+                case .platform(let key):
+                    PlatformDetailPage(model: model, providerKey: key)
+                        .padding(Metrics.pagePadding)
+                case .settingsMenuBar:
+                    SettingsMenuBarPage(model: model)
+                case .settingsPlatforms:
+                    SettingsPlatformsPage(model: model)
+                case .settingsSourcesFleet:
+                    SettingsSourcesFleetPage(model: model)
+                case .settingsAppearance:
+                    SettingsAppearancePage(model: model)
+                case .settingsAbout:
+                    SettingsAboutPage(model: model, state: state)
+                }
+            }
+            .background(Theme.background)
+        }
+    }
+
+    private var pageTitle: String {
+        switch state.page {
+        case .allPlatforms: return "All Platforms"
+        case .platform(let key):
+            return model.sections.first { $0.providerKey == key }?.providerLabel ?? key
+        default: return state.page.settingsTitle
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 12) {
+            Text(pageTitle)
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if !state.page.isSettings {
+                Picker("Layout", selection: $model.viewLayout) {
+                    ForEach(QuotaViewLayout.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 168)
+                .help("Quota Layout")
+                .accessibilityLabel("Quota Layout")
+
+                HStack(spacing: 5) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    TextField("Find a Platform", text: $query)
+                        .textFieldStyle(.plain)
+                        .focused($searchFocused)
+                        .onExitCommand { query = "" }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.hairline))
+                .frame(width: 180)
+                .help("Find a Platform")
+                .accessibilityLabel("Find a Platform")
+            }
+
+            Button { model.refresh() } label: {
+                Image(systemName: "arrow.clockwise").frame(width: 18, height: 18)
+            }
+            .disabled(model.isRefreshing)
+            .help("Refresh Quotas")
+            .accessibilityLabel("Refresh Quotas")
+
+            Toggle(isOn: $model.keepConsoleInFront) {
+                Image(systemName: "pin").frame(width: 18, height: 18)
+            }
+            .toggleStyle(.button)
+            .help("Keep In Front")
+            .accessibilityLabel("Keep In Front")
+        }
+        .padding(.horizontal, Metrics.pagePadding)
+        .frame(height: Metrics.toolbarHeight)
+        .background(Theme.surface)
+    }
+}
+
+// MARK: - Sidebar
+
+struct ConsoleSidebar: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var state: ConsoleState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            List(selection: Binding(get: { state.page }, set: { state.page = $0 ?? .allPlatforms })) {
+                Section {
+                    Label("All Platforms", systemImage: "square.grid.2x2")
+                        .tag(ConsolePage.allPlatforms)
+                    ForEach(model.sections, id: \.providerKey) { section in
+                        quotaRow(section).tag(ConsolePage.platform(section.providerKey))
+                    }
+                } header: {
+                    Eyebrow("QUOTAS")
+                }
+                Section {
+                    ForEach(ConsolePage.settingsPages, id: \.self) { page in
+                        Label(page.settingsTitle, systemImage: page.symbol).tag(page)
+                    }
+                } header: {
+                    Eyebrow("SETTINGS")
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+
+            Divider()
+            footer
+        }
+        .background(Theme.surface)
+    }
+
+    /// Quotas rows carry a trailing value; Settings rows do not.  Two different
+    /// row views is what stops `.listStyle(.sidebar)` aligning them identically.
+    private func quotaRow(_ section: QuotaPlatformSection) -> some View {
+        HStack(spacing: 8) {
+            PlatformLogo(providerKey: section.providerKey, size: 16)
+            Text(section.providerLabel)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            if model.issues[section.providerKey] != nil {
+                Image(systemName: "exclamationmark.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.warning)
+                    .accessibilityLabel("Quota unavailable")
+            } else if let remaining = section.minimumRemainingPercent {
+                Text("\(Int(remaining.rounded()))%")
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            } else if model.lastChecked == nil {
+                Capsule().fill(Theme.track).frame(width: 28, height: 10)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(model.localEnabled ? "Local readings on" : "Local readings off",
+                  systemImage: "desktopcomputer")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .help("Local Quota Readers Status")
+                .accessibilityLabel("Local Quota Readers Status")
+            if let handoffError = model.handoffError {
+                Text(handoffError)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(AgentBarVersion.display)
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+    }
+}
+
+// MARK: - All Platforms
+
+struct AllPlatformsPage: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var state: ConsoleState
+    let query: String
+
+    private var matching: [QuotaPlatformSection] {
+        model.sections.filter {
+            query.isEmpty || $0.providerLabel.localizedCaseInsensitiveContains(query)
+        }
+    }
+    private var localSections: [QuotaPlatformSection] {
+        matching.filter { model.originByProvider[$0.providerKey] != .fleet }
+    }
+    private var fleetSections: [QuotaPlatformSection] {
+        matching.filter { model.originByProvider[$0.providerKey] == .fleet }
+    }
+    private var compact: Bool { model.viewLayout == .summary }
+    private var columns: [GridItem] { [GridItem(.adaptive(minimum: compact ? 240 : 290), alignment: .top)] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            tiles
+            if let error = model.serverError { errorBanner(error) }
+
+            if !model.localEnabled && !model.serverEnabled {
+                emptyState
+            } else {
+                HStack {
+                    Text("This Mac").font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    Text("Percent remaining").font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                    ForEach(localSections, id: \.providerKey) { section in
+                        card(section, origin: .local)
+                    }
+                }
+                if model.serverEnabled { fleetGroup }
+            }
+
+            Text("Quota windows are independent." + sentenceGap
+                 + "Antigravity reports a single subscription across its models.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var tiles: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), alignment: .top)], spacing: 12) {
+            SummaryTile(label: "Reporting",
+                        value: model.lastChecked == nil ? "—" : "\(model.reportingCount) of \(model.sections.count)",
+                        symbol: "antenna.radiowaves.left.and.right",
+                        detail: "reporting")
+            SummaryTile(label: "Near Cap",
+                        value: model.lastChecked == nil ? "—" : "\(model.nearCapCount)",
+                        symbol: "gauge.with.dots.needle.100percent",
+                        detail: "at 20% or less")
+            SummaryTile(label: "Next Reset",
+                        value: model.nextReset.map { glanceResetCountdown($0, now: model.now) } ?? "—",
+                        symbol: "clock",
+                        detail: model.nextReset.map { $0.formatted(date: .omitted, time: .shortened) } ?? "no reset reported")
+            SummaryTile(label: "Fleet",
+                        value: model.serverEnabled ? "\(model.fleetWindowCount) windows" : "Off",
+                        symbol: "arrow.up.arrow.down.circle",
+                        detail: model.serverEnabled
+                            ? (model.lastPullTime.map { "pulled \($0.formatted(date: .omitted, time: .shortened))" } ?? "never pulled")
+                            : "set up fleet pull")
+        }
+    }
+
+    private func errorBanner(_ error: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(Theme.warning)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Fleet refresh failed." + sentenceGap + "Showing the last report.")
+                    .font(.system(size: 12, weight: .medium))
+                Text(error)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("Open Settings") { state.page = .settingsSourcesFleet }
+                .help("Open Settings")
+                .accessibilityLabel("Open Settings")
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.warning.opacity(0.35)))
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label("Connect a Quota Source", systemImage: "link")
+        } description: {
+            Text("AgentBar reads quota from the agent CLIs already signed in on this Mac."
+                 + sentenceGap + "You can also pull quota from your other machines.")
+        } actions: {
+            HStack(spacing: 10) {
+                Button("Turn On Local Readers") {
+                    model.setLocalEnabled(true)
+                    state.page = .settingsSourcesFleet
+                }
+                .buttonStyle(.borderedProminent)
+                Button("Set Up Fleet Pull") { state.page = .settingsSourcesFleet }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var fleetGroup: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Rectangle().fill(Theme.fleet).frame(width: 2)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text(fleetTitle).font(.system(size: 13, weight: .semibold))
+                    Spacer()
+                    Text(model.lastPullTime.map { "Pulled \($0.formatted(date: .omitted, time: .shortened))" } ?? "Never pulled")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                if fleetSections.isEmpty {
+                    Text("No other machines have reported yet.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                } else {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                        ForEach(fleetSections, id: \.providerKey) { section in
+                            card(section, origin: .fleet)
+                        }
+                    }
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var fleetTitle: String {
+        let labels = model.fleetSourceLabels
+        return labels.isEmpty ? "Fleet" : "Fleet · \(labels.joined(separator: ", "))"
+    }
+
+    private func card(_ section: QuotaPlatformSection, origin: QuotaOrigin) -> some View {
+        PlatformCard(section: section,
+                     now: model.now,
+                     issue: model.issues[section.providerKey],
+                     compact: compact,
+                     wide: false,
+                     origin: origin,
+                     customInfo: model.platformCustomInfo[section.providerKey])
+    }
+}
+
+// MARK: - Single platform
+
+struct PlatformDetailPage: View {
+    @ObservedObject var model: MonitorModel
+    let providerKey: String
+
+    @State private var customSubtitle = ""
+    @State private var planName = ""
+    @State private var costUsd = ""
+    @State private var renewalDate = ""
+    @State private var showCostAndRenewal = false
+
+    private var section: QuotaPlatformSection? {
+        model.sections.first { $0.providerKey == providerKey }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if let section {
+                PlatformCard(section: section,
+                             now: model.now,
+                             issue: model.issues[providerKey],
+                             compact: false,
+                             wide: true,
+                             origin: model.originByProvider[providerKey] ?? .local,
+                             customInfo: model.platformCustomInfo[providerKey])
+            } else {
+                Text("Quota unavailable")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            displaySection
+        }
+        .onAppear(perform: load)
+        .onDisappear(perform: save)
+        .onChange(of: providerKey) { _, _ in load() }
+    }
+
+    /// Editing a platform's presentation happens on that platform's own page,
+    /// which is why Settings ▸ Platforms needs no row selection and no flush.
+    private var displaySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Eyebrow("DISPLAY")
+            VStack(alignment: .leading, spacing: 12) {
+                field("Custom Subtitle", "e.g. Pro tier, Custom text, etc.", $customSubtitle,
+                      caption: "Replaces the default subtitle.")
+                Divider()
+                Toggle("Display Plan, Cost and Renewal", isOn: $showCostAndRenewal)
+                    .onChange(of: showCostAndRenewal) { _, _ in save() }
+                field("Plan Name", "e.g. Max 20x, Pro", $planName, disabled: !showCostAndRenewal)
+                field("Cost", "e.g. $20/mo", $costUsd, disabled: !showCostAndRenewal)
+                field("Renewal Date", "e.g. Oct 12 or Monthly", $renewalDate, disabled: !showCostAndRenewal)
+            }
+            .padding(16)
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline))
+        }
+    }
+
+    private func field(_ label: String, _ placeholder: String, _ binding: Binding<String>,
+                       caption: String? = nil, disabled: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(label)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 150, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                TextField(placeholder, text: binding)
+                    .textFieldStyle(.roundedBorder)
+                    .disabled(disabled)
+                    .onSubmit(save)
+                if let caption {
+                    Text(caption).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func load() {
+        let existing = model.platformCustomInfo[providerKey] ?? PlatformCustomInfo()
+        customSubtitle = existing.customSubtitle
+        planName = existing.planName
+        costUsd = existing.costUsd
+        renewalDate = existing.renewalDateText
+        showCostAndRenewal = existing.showCostAndRenewal
+    }
+
+    private func save() {
+        model.setCustomInfo(for: providerKey,
+                            info: PlatformCustomInfo(customSubtitle: customSubtitle,
+                                                     planName: planName,
+                                                     costUsd: costUsd,
+                                                     renewalDateText: renewalDate,
+                                                     showCostAndRenewal: showCostAndRenewal))
+    }
+}
+
+/// Version string, read once from the bundle the build script writes.
+enum AgentBarVersion {
+    static let display: String = {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String ?? "1"
+        return "Version \(short) (\(build))"
+    }()
 }

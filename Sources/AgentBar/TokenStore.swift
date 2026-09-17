@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import Security
 
 /// Tokens are scoped to their server URL and service domain and never stored in preferences.
@@ -16,7 +17,11 @@ enum TokenStore {
         var query = base(server, service: service)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
-        query[kSecUseAuthenticationUI as String] = kSecUseAuthenticationUIFail
+        // Never prompt: a locked Keychain must fail fast rather than block the
+        // refresh loop behind a system dialog.
+        let context = LAContext()
+        context.interactionNotAllowed = true
+        query[kSecUseAuthenticationContext as String] = context
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
@@ -85,7 +90,7 @@ enum TokenStore {
         var errorDescription: String? {
             switch self {
             case .read: return "The saved token is unavailable in Keychain."
-            case .write: return "Keychain could not save the token. Unlock your login Keychain and try again."
+            case .write: return "Keychain could not save the token.\u{00A0} Unlock your login Keychain and try again."
             }
         }
     }

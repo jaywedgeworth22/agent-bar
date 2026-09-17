@@ -2,453 +2,581 @@ import AppKit
 import QuotaCore
 import SwiftUI
 
-struct MonitorSettings: View {
+/// Shared chrome for a settings page.  Every page is a `Form` with no fixed
+/// height, inside the Console's own `ScrollView`, so the 580x510-versus-620x560
+/// clipping bug cannot recur anywhere.
+private struct SettingsPage<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        Form { content }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .scrollDisabled(true)
+            .padding(.vertical, 4)
+    }
+}
+
+// MARK: - Menu Bar
+
+struct SettingsMenuBarPage: View {
     @ObservedObject var model: MonitorModel
 
-    // Local / Pull state
-    @State private var local = true
-    @State private var server = false
-    @State private var endpoint = ""
-    @State private var token = ""
-    @State private var testingPull = false
-    @State private var testPullMessage: String?
-    @State private var testPullSuccess = false
+    var body: some View {
+        SettingsPage {
+            Section {
+                Picker("Show In", selection: $model.displayMode) {
+                    ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            } footer: {
+                Text("Both keeps the menu bar icon and a Dock icon." + sentenceGap
+                     + "Dock hides the menu bar icon, so use Open AgentBar to reach your quota.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
 
-    // Sync / Push state
-    @State private var syncEnabled = false
+            Section {
+                Picker("Style", selection: $model.menuBarStyle) {
+                    ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Displayed Quota", selection: $model.menuBarQuotaSelection) {
+                    ForEach(model.availableMenuBarQuotas, id: \.id) { item in
+                        Text(item.label).tag(item.id)
+                    }
+                }
+            } header: {
+                Eyebrow("MENU BAR")
+            }
+
+            Section {
+                LabeledContent("Preview") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 4) {
+                            if model.menuBarStyle != .percentOnly {
+                                PlatformLogo(providerKey: model.menuBarTargetSnapshot?.window.canonicalProviderKey ?? "auto",
+                                             size: 14)
+                            }
+                            if model.menuBarStyle != .symbolOnly {
+                                Text(model.menuBarTitle.isEmpty ? "—" : model.menuBarTitle)
+                                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+                            }
+                        }
+                        Text(model.menuBarDetail)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Menu Bar Preview")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Platforms
+
+struct SettingsPlatformsPage: View {
+    @ObservedObject var model: MonitorModel
+    @State private var selection: String?
+
+    private var orderedKeys: [String] {
+        let live = model.sections.map(\.providerKey)
+        guard !model.platformOrder.isEmpty else { return live }
+        let ordered = model.platformOrder.filter(live.contains)
+        return ordered + live.filter { !ordered.contains($0) }
+    }
+
+    private func label(for providerKey: String) -> String {
+        model.sections.first { $0.providerKey == providerKey }?.providerLabel ?? providerKey
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Drag to reorder." + sentenceGap
+                 + "This order is used in the quota list, in Glance and in the menu bar.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // A plain List outside a Form group, because `.onMove`'s drop
+            // indicator misbehaves inside `.formStyle(.grouped)`.
+            List(selection: $selection) {
+                ForEach(orderedKeys, id: \.self) { providerKey in
+                    HStack(spacing: 10) {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.tertiary)
+                            .help("Drag to Reorder")
+                            .accessibilityHidden(true)
+                        PlatformLogo(providerKey: providerKey, size: 16)
+                        Text(label(for: providerKey)).font(.system(size: 13, weight: .medium))
+                        Spacer()
+                    }
+                    .tag(providerKey)
+                    .accessibilityLabel("\(label(for: providerKey)), position \((orderedKeys.firstIndex(of: providerKey) ?? 0) + 1) of \(orderedKeys.count)")
+                }
+                .onMove(perform: move)
+            }
+            .listStyle(.inset)
+            .frame(minHeight: 240)
+            .frame(maxHeight: CGFloat(orderedKeys.count) * 30 + 16)
+
+            HStack {
+                Spacer()
+                Button("Reset Default Order") { model.resetPlatformOrder() }
+                    .help("Reset Default Order")
+                    .accessibilityLabel("Reset Default Order")
+            }
+        }
+        .padding(Metrics.pagePadding)
+        .background {
+            // Keyboard equivalents for the drag the chevrons used to stand in for.
+            VStack {
+                Button("") { moveSelection(by: -1) }
+                    .keyboardShortcut(.upArrow, modifiers: [.option, .command])
+                Button("") { moveSelection(by: 1) }
+                    .keyboardShortcut(.downArrow, modifiers: [.option, .command])
+            }
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private func move(from source: IndexSet, to destination: Int) {
+        var keys = orderedKeys
+        keys.move(fromOffsets: source, toOffset: destination)
+        model.platformOrder = keys
+    }
+
+    private func moveSelection(by delta: Int) {
+        guard let selection else { return }
+        if delta < 0 { model.movePlatformUp(providerKey: selection) }
+        else { model.movePlatformDown(providerKey: selection) }
+    }
+}
+
+// MARK: - Sources & Fleet
+
+struct SettingsSourcesFleetPage: View {
+    @ObservedObject var model: MonitorModel
+
     @State private var syncEndpoint = ""
     @State private var syncToken = ""
     @State private var syncFormat: QuotaSyncFormat = .usageMonitorV2
-    @State private var testingPush = false
-    @State private var testResultMessage: String?
-    @State private var testResultSuccess = false
+    @State private var pushing = false
+    @State private var pushMessage: String?
+    @State private var pushSucceeded = false
 
-    // Platforms customization
-    @State private var selectedPlatformKey: String = "google-antigravity"
-    @State private var customSubtitleInput: String = ""
-    @State private var planNameInput: String = ""
-    @State private var costUsdInput: String = ""
-    @State private var renewalDateInput: String = ""
-    @State private var showCostAndRenewalInput: Bool = false
+    @State private var pullEndpoint = ""
+    @State private var pullToken = ""
+    @State private var pulling = false
+    @State private var pullMessage: String?
+    @State private var pullSucceeded = false
 
-    @State private var message: String?
-    @State private var isError = false
-    @State private var saving = false
-    @State private var selectedTab = 0
+    private var pushDirty: Bool {
+        syncEndpoint != model.syncEndpoint || syncFormat != model.syncFormat || !syncToken.isEmpty
+    }
+    private var pullDirty: Bool {
+        pullEndpoint != model.endpoint || !pullToken.isEmpty
+    }
+
+    private var dashboardURL: URL? {
+        guard let url = URL(string: model.endpoint),
+              let scheme = url.scheme, let host = url.host() else { return nil }
+        return URL(string: "\(scheme)://\(host)")
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("AgentBar Settings").font(.title2.bold())
-                Spacer()
-            }
+        SettingsPage {
+            thisMacSection
+            shareSection
+            pullSection
+        }
+        .onAppear {
+            syncEndpoint = model.syncEndpoint
+            syncFormat = model.syncFormat
+            pullEndpoint = model.endpoint
+        }
+    }
 
-            Picker("", selection: $selectedTab) {
-                Text("General").tag(0)
-                Text("Platforms").tag(1)
-                Text("Sync & Share").tag(2)
-                Text("Pull Fleet").tag(3)
-            }
-            .pickerStyle(.segmented)
+    // MARK: This Mac
 
-            Group {
-                if selectedTab == 0 {
-                    generalTab
-                } else if selectedTab == 1 {
-                    platformsTab
-                } else if selectedTab == 2 {
-                    syncAndShareTab
-                } else {
-                    pullFleetTab
+    private var thisMacSection: some View {
+        Section {
+            Toggle("Read Agent Quotas on This Mac",
+                   isOn: Binding(get: { model.localEnabled }, set: { model.setLocalEnabled($0) }))
+            ForEach(ReaderStatus.all, id: \.providerKey) { reader in
+                readerRow(reader)
+            }
+        } header: {
+            Eyebrow("THIS MAC")
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("AgentBar reads each CLI's own credential files in place." + sentenceGap
+                     + "It never asks you for a provider API key.")
+                Text("A snapshot is written to ~/.agent-bar/quota-snapshot.json for BotFleet.")
+                if let handoffError = model.handoffError {
+                    Text(handoffError).foregroundStyle(Theme.warning)
                 }
             }
-            .frame(maxHeight: .infinity, alignment: .top)
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
 
-            if let message {
-                Text(message).font(.caption).foregroundStyle(isError ? Theme.danger : Theme.accent)
-                    .fixedSize(horizontal: false, vertical: true)
+    private func readerRow(_ reader: ReaderStatus) -> some View {
+        let section = model.sections.first { $0.providerKey == reader.providerKey }
+        let issue = model.issues[reader.providerKey]
+        let healthy = issue == nil && !(section?.windows.isEmpty ?? true)
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                PlatformLogo(providerKey: reader.providerKey, size: 16)
+                Text(section?.providerLabel ?? reader.label)
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: 110, alignment: .leading)
+                Text(reader.source)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Image(systemName: healthy ? "checkmark.circle" : "exclamationmark.triangle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(healthy ? Theme.accent : Theme.warning)
+                    .accessibilityHidden(true)
             }
+            if let issue {
+                Text(issue)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if !healthy && model.localEnabled {
+                Text("Not signed in locally.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
 
-            Divider()
+    // MARK: Share This Mac
 
-            HStack {
-                if selectedTab == 2 && model.hasSavedSyncToken {
-                    Button("Forget Sync Token", role: .destructive) {
-                        saving = true
+    private var shareSection: some View {
+        Section {
+            Toggle("Push Quotas to a Server", isOn: Binding(
+                get: { model.syncEnabled },
+                set: { newValue in
+                    Task { try? await model.saveSyncSettings(enabled: newValue, endpoint: syncEndpoint.isEmpty ? model.syncEndpoint : syncEndpoint, token: "", format: syncFormat) }
+                }))
+            TextField("Ingest Endpoint", text: $syncEndpoint,
+                      prompt: Text("https://usage.example.com/api/ingest/usage"))
+                .disabled(!model.syncEnabled)
+                .onSubmit(savePush)
+            SecureField("Ingest Token", text: $syncToken,
+                        prompt: Text(model.hasSavedSyncToken ? "Saved in Keychain" : "Ingest Token"))
+                .disabled(!model.syncEnabled)
+                .onSubmit(savePush)
+            Picker("Payload Format", selection: $syncFormat) {
+                ForEach(QuotaSyncFormat.allCases) { Text($0.title).tag($0) }
+            }
+            .disabled(!model.syncEnabled)
+
+            if pushDirty {
+                Text("Unsaved changes").font(.system(size: 11)).foregroundStyle(Theme.warning)
+            }
+            HStack(spacing: 10) {
+                if model.hasSavedSyncToken {
+                    Button("Forget Ingest Token", role: .destructive) {
                         Task {
-                            defer { saving = false }
                             do {
                                 try await model.forgetSyncServer()
                                 syncToken = ""
-                                message = "Sync token removed."
-                                isError = false
+                                pushSucceeded = true
+                                pushMessage = "Ingest token removed."
                             } catch {
-                                message = error.localizedDescription
-                                isError = true
+                                pushSucceeded = false
+                                pushMessage = error.localizedDescription
                             }
                         }
                     }
-                } else if selectedTab == 3 && model.hasSavedToken {
-                    Button("Forget Read Token", role: .destructive) {
-                        saving = true
-                        Task {
-                            defer { saving = false }
-                            do {
-                                try await model.forgetServer()
-                                server = false
-                                token = ""
-                                message = "Fleet read token removed."
-                                isError = false
-                            } catch {
-                                message = error.localizedDescription
-                                isError = true
-                            }
-                        }
-                    }
+                    .help("Forget Ingest Token")
+                    .accessibilityLabel("Forget Ingest Token")
                 }
                 Spacer()
-                Button("Save Settings") {
-                    saving = true
+                if pushing { ProgressView().controlSize(.small) }
+                CommitButton(title: "Save & Push Now", prominent: pushDirty, action: savePush)
+                    .disabled(!model.syncEnabled || pushing)
+            }
+            if let pushMessage {
+                Text(pushMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(pushSucceeded ? Theme.accent : Theme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } header: {
+            HStack {
+                Eyebrow("SHARE THIS MAC")
+                Spacer()
+                Text(model.lastSyncTime.map { "Pushed \($0.formatted(date: .omitted, time: .shortened))" } ?? "Never pushed")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .textCase(nil)
+            }
+        } footer: {
+            Text("You can also set the USAGE_INGEST_TOKEN environment variable instead of saving a token here.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func savePush() {
+        pushing = true
+        pushMessage = nil
+        Task {
+            defer { pushing = false }
+            do {
+                try await model.saveSyncSettings(enabled: model.syncEnabled,
+                                                 endpoint: syncEndpoint,
+                                                 token: syncToken,
+                                                 format: syncFormat)
+                let (ok, message) = await model.testAndPushSync(endpoint: syncEndpoint,
+                                                                token: syncToken,
+                                                                format: syncFormat)
+                syncToken = ""
+                pushSucceeded = ok
+                pushMessage = message
+            } catch {
+                pushSucceeded = false
+                pushMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+        }
+    }
+
+    // MARK: Pull The Fleet
+
+    private var pullSection: some View {
+        Section {
+            Toggle("Show Other Machines' Quotas", isOn: Binding(
+                get: { model.serverEnabled },
+                set: { newValue in
                     Task {
-                        defer { saving = false }
-                        do {
-                            try await model.saveConnection(local: local, server: server, endpoint: endpoint, token: token)
-                            try await model.saveSyncSettings(enabled: syncEnabled, endpoint: syncEndpoint, token: syncToken, format: syncFormat)
-                            saveCurrentPlatformCustomInfo()
-                            token = ""
-                            syncToken = ""
-                            message = "Settings saved successfully."
-                            isError = false
-                        } catch {
-                            message = error.localizedDescription
-                            isError = true
+                        try? await model.saveConnection(local: model.localEnabled,
+                                                        server: newValue,
+                                                        endpoint: pullEndpoint.isEmpty ? model.endpoint : pullEndpoint,
+                                                        token: "")
+                    }
+                }))
+            TextField("Quota Endpoint", text: $pullEndpoint,
+                      prompt: Text("https://usage.example.com/api/quota-windows"))
+                .disabled(!model.serverEnabled)
+                .onSubmit(savePull)
+            SecureField("Read Token", text: $pullToken,
+                        prompt: Text(model.hasSavedToken ? "Saved in Keychain" : "Read Token"))
+                .disabled(!model.serverEnabled)
+                .onSubmit(savePull)
+
+            if pullDirty {
+                Text("Unsaved changes").font(.system(size: 11)).foregroundStyle(Theme.warning)
+            }
+            HStack(spacing: 10) {
+                if model.hasSavedToken {
+                    Button("Forget Read Token", role: .destructive) {
+                        Task {
+                            do {
+                                try await model.forgetServer()
+                                pullToken = ""
+                                pullSucceeded = true
+                                pullMessage = "Read token removed."
+                            } catch {
+                                pullSucceeded = false
+                                pullMessage = error.localizedDescription
+                            }
                         }
                     }
+                    .help("Forget Read Token")
+                    .accessibilityLabel("Forget Read Token")
                 }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
+                Spacer()
+                if pulling { ProgressView().controlSize(.small) }
+                CommitButton(title: "Save & Fetch Now", prominent: pullDirty, action: savePull)
+                    .disabled(!model.serverEnabled || pulling)
             }
-            if saving { ProgressView("Saving settings…").font(.caption) }
-        }
-        .disabled(saving)
-        .padding(24).frame(width: 620, height: 560).tint(Theme.accent)
-        .onAppear {
-            local = model.localEnabled
-            server = model.serverEnabled
-            endpoint = model.endpoint
-            syncEnabled = model.syncEnabled
-            syncEndpoint = model.syncEndpoint
-            syncFormat = model.syncFormat
-            loadPlatformCustomInfo(for: selectedPlatformKey)
-        }
-    }
-
-    private var generalTab: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GroupBox("Appearance") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Picker("Show In", selection: $model.displayMode) {
-                        ForEach(DisplayMode.allCases) { Text($0.title).tag($0) }
-                    }.pickerStyle(.segmented)
-                    Text("AgentBar runs in the menu bar, Dock, or both.").font(.caption).foregroundStyle(.secondary)
-                }.padding(8)
+            if let pullMessage {
+                Text(pullMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(pullSucceeded ? Theme.accent : Theme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            GroupBox("Menu Bar") {
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Style").font(.caption.weight(.medium))
-                        Picker("Style", selection: $model.menuBarStyle) {
-                            ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+        } header: {
+            HStack {
+                Eyebrow("PULL THE FLEET")
+                Spacer()
+                if let dashboardURL {
+                    Button {
+                        NSWorkspace.shared.open(dashboardURL)
+                    } label: {
+                        Label("Open Web Dashboard", systemImage: "arrow.up.right.square")
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Displayed Quota").font(.caption.weight(.medium))
-                        Picker("Displayed Quota", selection: $model.menuBarQuotaSelection) {
-                            ForEach(model.availableMenuBarQuotas, id: \.id) { item in
-                                Text(item.label).tag(item.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: .infinity)
-                    }
-
-                    Text(model.menuBarStyle == .symbolOnly
-                         ? "Only the icon is visible in the menu bar (matching the targeted agent) — click it to view all quotas."
-                         : "Shows \"\(model.menuBarTitle.isEmpty ? "..." : model.menuBarTitle)\" with the agent icon from \(model.menuBarDetail).")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }.padding(8)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11))
+                    .textCase(nil)
+                    .help("Open Web Dashboard")
+                    .accessibilityLabel("Open Web Dashboard")
+                }
+                Text(model.lastPullTime.map { "Pulled \($0.formatted(date: .omitted, time: .shortened))" } ?? "Never pulled")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .textCase(nil)
             }
-
-            GroupBox("Local Quota Readers") {
-                VStack(alignment: .leading, spacing: 10) {
-                    Toggle("Read Agent Quotas on This Mac", isOn: $local)
-                    Text("Automatically reads Claude Code Keychain credentials, Codex CLI, Google Antigravity summary/CLI, Cursor, Grok CLI, Grok Bot, and MiniMax sessions.")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("• Atomic local handoff published at ~/Library/Application Support/Usage Monitor/quota-windows.json for BotFleet.")
-                        .font(.caption2).foregroundStyle(.tertiary)
-                }.padding(8)
-            }
+        } footer: {
+            Text("Refreshes every 5 minutes while AgentBar is running.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
         }
     }
 
-    private var platformsTab: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GroupBox("Platform Display Order & Subscription Details") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Select a platform to rearrange order or customize its subscription text, cost, and renewal date.")
-                        .font(.caption).foregroundStyle(.secondary)
-
-                    HStack(alignment: .top, spacing: 14) {
-                        // Platform List with Reorder Buttons
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Platforms (Top to Bottom)").font(.caption.weight(.semibold))
-                            ScrollView {
-                                VStack(spacing: 4) {
-                                    ForEach(model.sections, id: \.providerKey) { section in
-                                        HStack(spacing: 6) {
-                                            PlatformLogo(providerKey: section.providerKey, size: 16)
-                                            Text(section.providerLabel)
-                                                .font(.system(size: 11, weight: selectedPlatformKey == section.providerKey ? .bold : .regular))
-                                                .lineLimit(1)
-                                            Spacer()
-                                            Button {
-                                                model.movePlatformUp(providerKey: section.providerKey)
-                                            } label: { Image(systemName: "chevron.up").font(.system(size: 9)) }
-                                            .buttonStyle(.plain)
-
-                                            Button {
-                                                model.movePlatformDown(providerKey: section.providerKey)
-                                            } label: { Image(systemName: "chevron.down").font(.system(size: 9)) }
-                                            .buttonStyle(.plain)
-                                        }
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 5)
-                                        .background(selectedPlatformKey == section.providerKey ? Theme.accent.opacity(0.12) : Theme.hairline, in: RoundedRectangle(cornerRadius: 6))
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            saveCurrentPlatformCustomInfo()
-                                            selectedPlatformKey = section.providerKey
-                                            loadPlatformCustomInfo(for: section.providerKey)
-                                        }
-                                    }
-                                }
-                            }
-                            .frame(width: 210, height: 210)
-
-                            Button("Reset Default Order") {
-                                model.resetPlatformOrder()
-                            }
-                            .font(.caption2)
-                        }
-
-                        Divider()
-
-                        // Custom Subtitle & Subscription Info
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Edit: \(model.sections.first(where: { $0.providerKey == selectedPlatformKey })?.providerLabel ?? selectedPlatformKey)")
-                                .font(.caption.weight(.semibold))
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Custom Subtitle (replaces default text)").font(.caption2)
-                                TextField("e.g. Pro tier, Custom text, etc.", text: $customSubtitleInput)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.caption)
-                            }
-
-                            Divider()
-
-                            Toggle("Display Plan, Cost & Renewal", isOn: $showCostAndRenewalInput)
-                                .font(.caption)
-
-                            HStack(spacing: 8) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("Plan Name").font(.caption2)
-                                    TextField("e.g. Max 20x, Pro", text: $planNameInput)
-                                        .textFieldStyle(.roundedBorder)
-                                        .font(.caption)
-                                        .disabled(!showCostAndRenewalInput)
-                                }
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("Cost").font(.caption2)
-                                    TextField("e.g. $20/mo", text: $costUsdInput)
-                                        .textFieldStyle(.roundedBorder)
-                                        .font(.caption)
-                                        .disabled(!showCostAndRenewalInput)
-                                }
-                            }
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("Renewal Date").font(.caption2)
-                                TextField("e.g. Oct 12 or Monthly", text: $renewalDateInput)
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.caption)
-                                    .disabled(!showCostAndRenewalInput)
-                            }
-                        }
-                    }
-                }.padding(8)
+    private func savePull() {
+        pulling = true
+        pullMessage = nil
+        Task {
+            defer { pulling = false }
+            do {
+                try await model.saveConnection(local: model.localEnabled,
+                                               server: model.serverEnabled,
+                                               endpoint: pullEndpoint,
+                                               token: pullToken)
+                let (ok, message) = await model.testPullConnection(endpoint: pullEndpoint, token: pullToken)
+                pullToken = ""
+                pullSucceeded = ok
+                pullMessage = message
+            } catch {
+                pullSucceeded = false
+                pullMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
         }
     }
+}
 
-    private func loadPlatformCustomInfo(for key: String) {
-        if let existing = model.platformCustomInfo[key] {
-            customSubtitleInput = existing.customSubtitle
-            planNameInput = existing.planName
-            costUsdInput = existing.costUsd
-            renewalDateInput = existing.renewalDateText
-            showCostAndRenewalInput = existing.showCostAndRenewal
-        } else {
-            customSubtitleInput = ""
-            planNameInput = ""
-            costUsdInput = ""
-            renewalDateInput = ""
-            showCostAndRenewalInput = false
-        }
-    }
+/// The seven local readers, named by the credential they actually read.
+struct ReaderStatus {
+    let providerKey: String
+    let label: String
+    let source: String
 
-    private func saveCurrentPlatformCustomInfo() {
-        let info = PlatformCustomInfo(
-            customSubtitle: customSubtitleInput,
-            planName: planNameInput,
-            costUsd: costUsdInput,
-            renewalDateText: renewalDateInput,
-            showCostAndRenewal: showCostAndRenewalInput
-        )
-        model.setCustomInfo(for: selectedPlatformKey, info: info)
-    }
+    static let all: [ReaderStatus] = [
+        ReaderStatus(providerKey: "anthropic", label: "Claude", source: "Keychain credentials"),
+        ReaderStatus(providerKey: "openai", label: "Codex", source: "Codex CLI session"),
+        ReaderStatus(providerKey: "google-antigravity", label: "Antigravity", source: "Summary and CLI"),
+        ReaderStatus(providerKey: "cursor", label: "Cursor", source: "Cursor app session"),
+        ReaderStatus(providerKey: "xai", label: "Grok CLI", source: "Grok CLI session"),
+        ReaderStatus(providerKey: "grok-bot", label: "Grok Bot", source: "Cursor app session"),
+        ReaderStatus(providerKey: "minimax", label: "MiniMax", source: "MiniMax CLI session"),
+    ]
+}
 
-    private var syncAndShareTab: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GroupBox("Publish Quotas to Server / Webhook") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Toggle("Enable Quota Sync", isOn: $syncEnabled)
-                    Text("Pushes your Mac's current agent quota percentages and reset countdowns to your usage dashboard or any custom webhook. Credentials never leave RAM.")
-                        .font(.caption).foregroundStyle(.secondary)
+// MARK: - Appearance
 
-                    Divider()
+struct SettingsAppearancePage: View {
+    @ObservedObject var model: MonitorModel
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Ingest Endpoint URL").font(.caption.weight(.medium))
-                        TextField("https://usage.jays.services/api/ingest/usage", text: $syncEndpoint)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(!syncEnabled)
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Ingest Token (Stored in Keychain)").font(.caption.weight(.medium))
-                        SecureField(model.hasSavedSyncToken ? "Token saved · enter to replace" : "Server Ingest Token (USAGE_INGEST_TOKEN)", text: $syncToken)
-                            .textFieldStyle(.roundedBorder)
-                            .disabled(!syncEnabled)
-                    }
-
-                    Picker("Payload Format", selection: $syncFormat) {
-                        ForEach(QuotaSyncFormat.allCases) { Text($0.title).tag($0) }
-                    }
-                    .disabled(!syncEnabled)
-
-                    HStack(spacing: 12) {
-                        Button("Test & Push Now") {
-                            testingPush = true
-                            testResultMessage = nil
-                            Task {
-                                defer { testingPush = false }
-                                let (ok, msg) = await model.testAndPushSync(
-                                    endpoint: syncEndpoint,
-                                    token: syncToken,
-                                    format: syncFormat
-                                )
-                                testResultSuccess = ok
-                                testResultMessage = msg
-                            }
-                        }
-                        .disabled(!syncEnabled || testingPush)
-
-                        if testingPush {
-                            ProgressView().scaleEffect(0.7)
-                        } else if let testResultMessage {
-                            Text(testResultMessage)
-                                .font(.caption)
-                                .foregroundStyle(testResultSuccess ? Theme.accent : Theme.danger)
-                                .lineLimit(2)
-                        }
-                    }
-
-                    Text("Push uses USAGE_INGEST_TOKEN (write permission for POST /api/ingest/usage). Stored in Keychain.")
-                        .font(.caption2).foregroundStyle(.secondary)
-
-                    if let lastSyncTime = model.lastSyncTime {
-                        HStack {
-                            Text("Last pushed: \(lastSyncTime.formatted(date: .omitted, time: .standard))")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            if let status = model.lastSyncStatus {
-                                Text("(\(status))")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                }.padding(8)
+    var body: some View {
+        SettingsPage {
+            Section {
+                Picker("Theme", selection: $model.appearance) {
+                    ForEach(AppAppearance.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .help("Theme")
+                .accessibilityLabel("Theme")
+            } footer: {
+                Text("Light is the default." + sentenceGap + "System follows your Mac's setting.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
         }
     }
+}
 
-    private var pullFleetTab: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            GroupBox("Pull Remote Fleet Quotas (Optional)") {
-                VStack(alignment: .leading, spacing: 12) {
-                    Toggle("Connect Usage Monitor Server", isOn: $server)
-                    Text("Fetches aggregated quotas from remote machines and cloud runners via GET /api/quota-windows.")
-                        .font(.caption).foregroundStyle(.secondary)
+// MARK: - About
 
-                    Divider()
+struct SettingsAboutPage: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var state: ConsoleState
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Quota Endpoint").font(.caption.weight(.medium))
-                        TextField("https://usage.jays.services/api/quota-windows", text: $endpoint)
-                            .textFieldStyle(.roundedBorder)
-                            .accessibilityLabel("Quota Endpoint").disabled(!server)
-                    }
+    private static let projectPage = URL(string: "https://github.com/jaywedgeworth22/agent-bar")!
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Read Token (Stored in Keychain)").font(.caption.weight(.medium))
-                        SecureField(model.hasSavedToken ? "Token saved · enter to replace" : "Usage Monitor read token (USAGE_READ_TOKEN)", text: $token)
-                            .textFieldStyle(.roundedBorder).disabled(!server).accessibilityLabel("Usage Monitor read token")
-                    }
+    private var pushingDetail: String {
+        guard model.syncEnabled else { return "Off" }
+        guard let host = URL(string: model.syncEndpoint)?.host() else { return "On" }
+        return "On · \(host)"
+    }
+    private var pullingDetail: String {
+        guard model.serverEnabled else { return "Off" }
+        guard let host = URL(string: model.endpoint)?.host() else { return "On" }
+        return "On · \(host)"
+    }
 
-                    HStack(spacing: 12) {
-                        Button("Test Read Connection") {
-                            testingPull = true
-                            testPullMessage = nil
-                            Task {
-                                defer { testingPull = false }
-                                let (ok, msg) = await model.testPullConnection(endpoint: endpoint, token: token)
-                                testPullSuccess = ok
-                                testPullMessage = msg
-                            }
-                        }
-                        .disabled(!server || testingPull)
+    var body: some View {
+        SettingsPage {
+            Section {
+                VStack(spacing: 6) {
+                    Image(systemName: "gauge.with.dots.needle.50percent")
+                        .font(.system(size: 34))
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityHidden(true)
+                    Text("AgentBar").font(.system(size: 16, weight: .semibold))
+                    Text(AgentBarVersion.display)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            }
 
-                        if testingPull {
-                            ProgressView().scaleEffect(0.7)
-                        } else if let testPullMessage {
-                            Text(testPullMessage)
-                                .font(.caption)
-                                .foregroundStyle(testPullSuccess ? Theme.accent : Theme.danger)
-                                .lineLimit(1)
-                        }
-                    }
+            Section {
+                LabeledContent("Pushing quota") { Text(pushingDetail) }
+                LabeledContent("Pulling quota") { Text(pullingDetail) }
+                LabeledContent("Local readers") { Text(model.localEnabled ? "On" : "Off") }
+            }
 
-                    Text("Pull uses USAGE_READ_TOKEN (read permission for GET /api/quota-windows). Stored in Keychain. Refreshes every 5 minutes while running.")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }.padding(8)
+            Section {
+                Button {
+                    NSWorkspace.shared.open(Self.projectPage)
+                } label: {
+                    Label("Project Page", systemImage: "arrow.up.right.square")
+                }
+                .help("Project Page")
+                .accessibilityLabel("Project Page")
+            } footer: {
+                Text("AgentBar reads quota from agent CLIs already signed in on this Mac." + sentenceGap
+                     + "It never stores a provider API key.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+}
+
+/// A group's single commit-and-exercise button.  Prominent while the group is
+/// dirty, plain when it is clean, so the instant-apply-versus-commit asymmetry
+/// is visible rather than surprising.
+struct CommitButton: View {
+    let title: String
+    let prominent: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Group {
+            if prominent {
+                Button(title, action: action).buttonStyle(.borderedProminent)
+            } else {
+                Button(title, action: action).buttonStyle(.bordered)
+            }
+        }
+        .help(title)
+        .accessibilityLabel(title)
     }
 }

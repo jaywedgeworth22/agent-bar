@@ -308,7 +308,7 @@ final class MonitorModel: ObservableObject {
     func testPullConnection(endpoint input: String, token inputToken: String) async -> (success: Bool, message: String) {
         let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: value), QuotaClient.isAllowedEndpoint(url) else {
-            return (false, "Invalid endpoint URL (must be HTTPS or localhost).")
+            return (false, "Invalid endpoint URL." + sentenceGap + "Use HTTPS, or HTTP for localhost only.")
         }
         let cleanToken = inputToken.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: value, service: TokenStore.readService)
@@ -405,7 +405,7 @@ final class MonitorModel: ObservableObject {
         let endpointValue = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let targetEndpoint = !endpointValue.isEmpty ? endpointValue : syncEndpoint
         guard let url = URL(string: targetEndpoint), QuotaClient.isAllowedEndpoint(url) else {
-            return (false, "Invalid endpoint URL (must be HTTPS or localhost).")
+            return (false, "Invalid endpoint URL." + sentenceGap + "Use HTTPS, or HTTP for localhost only.")
         }
         let windowsToPush = localWindows.isEmpty ? AntigravityQuotaGroups.normalize(await Self.readLocalSources().windows) : localWindows
         guard !windowsToPush.isEmpty else {
@@ -414,7 +414,7 @@ final class MonitorModel: ObservableObject {
         let cleanToken = inputToken.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: targetEndpoint, service: TokenStore.syncService)
         guard let token = resolvedToken, !token.isEmpty else {
-            return (false, "Please provide a valid Ingest Token (USAGE_INGEST_TOKEN).")
+            return (false, "Please provide a valid Ingest Token.")
         }
         let targetFormat = inputFormat ?? syncFormat
         do {
@@ -469,7 +469,7 @@ final class MonitorModel: ObservableObject {
                     let client = try QuotaClient(endpoint: url, token: token)
                     newServer = try await client.fetch()
                 } catch is CancellationError { return }
-                catch { failure = (error as? LocalizedError)?.errorDescription ?? "Unable to refresh the server." }
+                catch { failure = (error as? LocalizedError)?.errorDescription ?? "Unable to reach the server." }
             }
             let local = await localRead
             guard !Task.isCancelled, let self, self.revision == generation else { return }
@@ -514,7 +514,7 @@ final class MonitorModel: ObservableObject {
             self.originByProvider = origins
             if newServer != nil { self.lastPullTime = self.now }
             for provider in serverProviders {
-                self.issues[provider] = failure.map { "Server refresh failed. Showing the last report. \($0)" }
+                self.issues[provider] = failure.map { "Fleet refresh failed." + sentenceGap + "Showing the last report." + sentenceGap + $0 }
             }
             self.response = QuotaResponse(generatedAt: ISO8601DateFormatter().string(from: self.now), windows: merged)
             self.isRefreshing = false

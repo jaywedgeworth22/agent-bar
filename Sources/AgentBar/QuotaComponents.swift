@@ -69,248 +69,9 @@ enum Metrics {
 /// A no-break space plus a space survives every renderer AppKit hands it.
 let sentenceGap = "\u{00A0} "
 
-struct SummaryTile: View {
-    let label: String
-    let value: String
-    let symbol: String
-    let detail: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Label(label, systemImage: symbol).font(.caption.weight(.medium)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 25, weight: .semibold, design: .rounded)).monospacedDigit()
-            Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
-        }
-        .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-        .padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
-    }
-}
+// MARK: - Shared status rules
 
-struct PlatformCard: View {
-    let section: QuotaPlatformSection
-    let now: Date
-    let issue: String?
-    let compact: Bool
-    var wide = false
-    var customInfo: PlatformCustomInfo? = nil
-    @State private var expanded = false
-    @State private var videoExpanded = false
-
-    private var primaryWindows: [QuotaWindowSnapshot] {
-        section.windows.filter { !$0.window.isSupplementaryVideoQuota }
-    }
-    private var videoWindows: [QuotaWindowSnapshot] {
-        section.windows.filter { $0.window.isSupplementaryVideoQuota }
-    }
-    private var displayedWindows: [QuotaWindowSnapshot] {
-        expanded ? primaryWindows : Array(primaryWindows.prefix(4))
-    }
-
-    private var subtitleText: String? {
-        if let custom = customInfo, !custom.customSubtitle.isEmpty {
-            return custom.customSubtitle
-        }
-        if let custom = customInfo, custom.showCostAndRenewal {
-            let parts = [custom.planName, custom.costUsd, custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"].filter { !$0.isEmpty }
-            if !parts.isEmpty { return parts.joined(separator: " · ") }
-        }
-        if section.via == "antigravity" {
-            return "Antigravity subscription"
-        }
-        if let plan = section.windows.compactMap(\.window.planName).first, !plan.isEmpty {
-            return plan
-        }
-        return nil
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 12 : 16) {
-            HStack(spacing: 10) {
-                PlatformLogo(providerKey: section.providerKey, size: compact ? 25 : 32)
-                    .frame(width: compact ? 28 : 36, height: compact ? 28 : 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(section.providerLabel).font(.headline)
-                    if let sub = subtitleText {
-                        Text(sub).font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-                if !section.windows.isEmpty {
-                    Text(issue == nil && section.hasFreshReport ? "LIVE" : "LAST REPORT")
-                        .font(.system(size: 8, weight: .bold)).tracking(0.7)
-                        .foregroundStyle(issue == nil && section.hasFreshReport ? Theme.accent : Theme.warning)
-                }
-            }
-            if section.windows.isEmpty {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("Quota unavailable").font(.callout.weight(.medium)).foregroundStyle(.secondary)
-                    Text(issue ?? "No subscription quota source connected.")
-                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                if wide && displayedWindows.count > 1 {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 22) {
-                        ForEach(displayedWindows, id: \.window.id) { snapshot in
-                            QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
-                                .padding(12)
-                                .background(Theme.background, in: RoundedRectangle(cornerRadius: 8))
-                        }
-                    }
-                } else {
-                    ForEach(Array(displayedWindows.enumerated()), id: \.offset) { index, snapshot in
-                        if index > 0 { Divider() }
-                        QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
-                    }
-                }
-                if primaryWindows.count > 4 {
-                    Button(expanded ? "Show Less" : "Show All \(primaryWindows.count) Windows") { expanded.toggle() }
-                        .buttonStyle(.plain).font(.caption.weight(.medium)).foregroundStyle(Theme.accent)
-                }
-                if !videoWindows.isEmpty {
-                    Divider()
-                    DisclosureGroup(isExpanded: $videoExpanded) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            ForEach(videoWindows, id: \.window.id) { snapshot in
-                                QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: true)
-                            }
-                        }.padding(.top, 8)
-                    } label: {
-                        Label("Video · \(videoWindows.count) windows", systemImage: "video")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                if let issue {
-                    Label(issue, systemImage: "exclamationmark.circle")
-                        .font(.caption).foregroundStyle(Theme.warning).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .padding(compact ? 14 : 18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
-    }
-}
-
-struct QuotaRow: View {
-    let snapshot: QuotaWindowSnapshot
-    let now: Date
-    let sourceFailed: Bool
-    let compact: Bool
-    private var tint: Color {
-        if !snapshot.isFresh || sourceFailed || snapshot.remainingPercent == nil { return .secondary }
-        if snapshot.status == .exhausted { return Theme.danger }
-        if (snapshot.remainingPercent ?? 100) <= 20 { return Theme.warning }
-        return Theme.accent
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(snapshot.window.label).font(.system(size: compact ? 11 : 12, weight: .medium))
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 10)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(snapshot.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—")
-                        .font(.system(size: compact ? 18 : 24, weight: .semibold, design: .rounded))
-                        .monospacedDigit().foregroundStyle(tint)
-                    Text(snapshot.remainingPercent == nil ? "unavailable" : snapshot.isFresh && !sourceFailed ? "remaining" : "last reported")
-                        .font(.system(size: 9)).foregroundStyle(.secondary)
-                }
-            }
-
-            if let pacing = snapshot.pacing(now: now), !compact {
-                // Timespan backdrop & usage bar comparison in Detailed view
-                VStack(alignment: .leading, spacing: 5) {
-                    GeometryReader { geometry in
-                        let width = geometry.size.width
-                        let timeWidth = max(0, min(width, width * CGFloat(pacing.timeElapsedPercent) / 100))
-                        let usedWidth = max(0, min(width, width * CGFloat(pacing.quotaUsedPercent) / 100))
-
-                        ZStack(alignment: .leading) {
-                            // Total window track
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Theme.hairline)
-
-                            // Time elapsed backdrop zone
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(Theme.pacingTrack.opacity(0.14))
-                                .frame(width: timeWidth)
-
-                            // Time progress pin
-                            Rectangle()
-                                .fill(Theme.pacingTrack.opacity(0.75))
-                                .frame(width: 2, height: 10)
-                                .offset(x: max(0, min(width - 2, timeWidth - 1)))
-
-                            // Quota used fill bar
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
-                                .frame(width: usedWidth, height: 5)
-                        }
-                    }
-                    .frame(height: 10)
-
-                    HStack(spacing: 6) {
-                        HStack(spacing: 3) {
-                            Circle().fill(Theme.pacingTrack.opacity(0.8)).frame(width: 5, height: 5)
-                            Text(pacing.timeElapsedLabel)
-                                .font(.system(size: 9))
-                                .foregroundStyle(.secondary)
-                        }
-
-                        Spacer()
-
-                        HStack(spacing: 3) {
-                            Image(systemName: pacing.isUnderCapPace ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                                .font(.system(size: 8))
-                                .foregroundStyle(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
-                            Text(pacing.paceDescription)
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
-                        }
-                    }
-                }
-                .padding(.vertical, 2)
-            } else if let remaining = snapshot.remainingPercent {
-                // Standard single progress bar
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.track)
-                        Capsule().fill(tint).frame(width: geometry.size.width * remaining / 100)
-                    }
-                }.frame(height: 5)
-                .accessibilityLabel("\(Int(remaining.rounded())) percent remaining")
-            }
-
-            if let remaining = snapshot.window.absoluteRemaining, let limit = snapshot.window.absoluteLimit,
-               remaining.isFinite, limit.isFinite, remaining >= 0, limit > 0, let unit = snapshot.window.quotaUnit {
-                Text("\(remaining.formatted(.number.precision(.fractionLength(0...1)))) of \(limit.formatted(.number.precision(.fractionLength(0...1)))) \(unit) remaining")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-
-            HStack(spacing: 4) {
-                Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
-                Text(resetCountdown(snapshot.resetAt, now: now))
-            }.font(.caption2).foregroundStyle(.secondary)
-
-            if let reset = snapshot.resetAt, !compact {
-                Text(reset.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute().timeZone()))
-                    .font(.system(size: 10)).foregroundStyle(.secondary)
-            }
-            if !compact {
-                HStack {
-                    Text(snapshot.observedAt.map { "Updated \($0.formatted(date: .omitted, time: .shortened))" } ?? "Update time unavailable")
-                    Spacer()
-                    if snapshot.observedAt == nil { Text("Not reported") }
-                    else if snapshot.isStale { Text("Stale").foregroundStyle(Theme.warning) }
-                    else if let source = snapshot.window.source { Text(source).lineLimit(1) }
-                }.font(.system(size: 9)).foregroundStyle(.tertiary)
-            }
-        }.accessibilityElement(children: .combine)
-    }
-}
-
+/// The 20% threshold lives here and nowhere else.
 func quotaStatusColor(for snapshot: QuotaWindowSnapshot, sourceFailed: Bool) -> Color {
     if !snapshot.isFresh || sourceFailed || snapshot.remainingPercent == nil { return .secondary }
     if snapshot.status == .exhausted { return Theme.danger }
@@ -378,6 +139,19 @@ struct StatusBadge: View {
     }
 }
 
+/// The group eyebrow: `QUOTAS`, `THIS MAC`, `SHARE THIS MAC`, `DISPLAY`.
+struct Eyebrow: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .tracking(0.8)
+            .foregroundStyle(.secondary)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
 extension QuotaPlatformSection {
     /// The single subtitle rule, replacing three near-identical copies that
     /// disagreed about the Antigravity fallback.
@@ -436,5 +210,294 @@ enum QuotaGlanceMetrics {
             + (fleetCount > 0 ? 12 : 0)
         let total = Metrics.glanceHeaderHeight + Metrics.glanceFooterHeight + 18 + content
         return min(Metrics.glanceMaxHeight(), max(Metrics.glanceMinHeight, total))
+    }
+}
+
+// MARK: - Console detail components
+
+struct SummaryTile: View {
+    let label: String
+    let value: String
+    let symbol: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(label, systemImage: symbol)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 18, weight: .semibold, design: .rounded).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(detail)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A bordered container with a header and one or more `QuotaRow`s.  Cards exist
+/// only in the Console detail pane; rows exist only in Glance and the sidebar.
+struct PlatformCard: View {
+    let section: QuotaPlatformSection
+    let now: Date
+    let issue: String?
+    let compact: Bool
+    var wide = false
+    var origin: QuotaOrigin = .local
+    var customInfo: PlatformCustomInfo? = nil
+    @State private var expanded = false
+    @State private var videoExpanded = false
+
+    private var primaryWindows: [QuotaWindowSnapshot] {
+        section.windows.filter { !$0.window.isSupplementaryVideoQuota }
+    }
+    private var videoWindows: [QuotaWindowSnapshot] {
+        section.windows.filter { $0.window.isSupplementaryVideoQuota }
+    }
+    private var displayedWindows: [QuotaWindowSnapshot] {
+        expanded ? primaryWindows : Array(primaryWindows.prefix(4))
+    }
+    private var subtitleText: String? {
+        if origin == .fleet {
+            return section.drivingWindow?.window.source
+        }
+        return section.displaySubtitle(customInfo: customInfo)
+    }
+    private var badge: StatusBadge.Kind {
+        if origin == .fleet { return .fleet }
+        return issue == nil && section.hasFreshReport ? .live : .lastReport
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: compact ? 12 : 16) {
+            header
+            if section.windows.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Quota unavailable")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Text(issue ?? "no quota source connected")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                windowsBody
+            }
+        }
+        .padding(compact ? 12 : 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline))
+        .opacity(issue == nil ? 1 : 0.72)
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            PlatformLogo(providerKey: section.providerKey, size: compact ? 22 : 28)
+                .frame(width: compact ? 24 : 30, height: compact ? 24 : 30)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(section.providerLabel)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                if let subtitleText {
+                    Text(subtitleText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 6)
+            if !section.windows.isEmpty { StatusBadge(kind: badge) }
+        }
+    }
+
+    @ViewBuilder
+    private var windowsBody: some View {
+        if wide && displayedWindows.count > 1 {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())],
+                      alignment: .leading, spacing: 16) {
+                ForEach(displayedWindows, id: \.window.id) { snapshot in
+                    QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
+                        .padding(12)
+                        .background(Theme.background, in: RoundedRectangle(cornerRadius: 8))
+                }
+            }
+        } else {
+            ForEach(Array(displayedWindows.enumerated()), id: \.offset) { index, snapshot in
+                if index > 0 { Divider() }
+                QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
+            }
+        }
+        if primaryWindows.count > 4 {
+            Button(expanded ? "Show Less" : "Show All \(primaryWindows.count) Windows") {
+                expanded.toggle()
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(Theme.accent)
+        }
+        if !videoWindows.isEmpty {
+            Divider()
+            DisclosureGroup(isExpanded: $videoExpanded) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(videoWindows, id: \.window.id) { snapshot in
+                        QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: true)
+                    }
+                }
+                .padding(.top, 8)
+            } label: {
+                Label("Video · \(videoWindows.count) Windows", systemImage: "video")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        if let issue {
+            Label(issue, systemImage: "exclamationmark.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.warning)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+struct QuotaRow: View {
+    let snapshot: QuotaWindowSnapshot
+    let now: Date
+    let sourceFailed: Bool
+    let compact: Bool
+
+    private var tint: Color { quotaStatusColor(for: snapshot, sourceFailed: sourceFailed) }
+    private var percentText: String {
+        snapshot.remainingPercent.map { "\(Int($0.rounded()))%" } ?? "—"
+    }
+    private var stateText: String {
+        if snapshot.remainingPercent == nil { return "unavailable" }
+        return snapshot.isFresh && !sourceFailed ? "remaining" : "last reported"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(compact ? compactWindowName(snapshot.window.label) : snapshot.window.label)
+                    .font(.system(size: 11, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 10)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(percentText)
+                        .font(.system(size: compact ? 18 : 22, weight: .semibold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(tint)
+                    Text(stateText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let pacing = snapshot.pacing(now: now), !compact {
+                pacingBar(pacing)
+            } else if let remaining = snapshot.remainingPercent {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.track)
+                        Capsule().fill(tint)
+                            .frame(width: geometry.size.width * CGFloat(min(max(remaining, 0), 100)) / 100)
+                    }
+                }
+                .frame(height: 5)
+                .accessibilityLabel("Quota Remaining")
+                .accessibilityValue("\(Int(remaining.rounded())) percent remaining")
+            }
+
+            if let remaining = snapshot.window.absoluteRemaining,
+               let limit = snapshot.window.absoluteLimit,
+               remaining.isFinite, limit.isFinite, remaining >= 0, limit > 0,
+               let unit = snapshot.window.quotaUnit {
+                Text("\(remaining.formatted(.number.precision(.fractionLength(0...1)))) of \(limit.formatted(.number.precision(.fractionLength(0...1)))) \(unit) left")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 4) {
+                Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
+                Text(resetCountdown(snapshot.resetAt, now: now))
+            }
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+
+            if let reset = snapshot.resetAt, !compact {
+                Text(reset.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour().minute()))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            if !compact {
+                HStack {
+                    Text(snapshot.observedAt.map { "Updated \($0.formatted(date: .omitted, time: .shortened))" }
+                         ?? "update time unavailable")
+                    Spacer()
+                    if snapshot.observedAt == nil { Text("not reported") }
+                    else if snapshot.isStale { Text("stale").foregroundStyle(Theme.warning) }
+                    else if let source = snapshot.window.source { Text(source).lineLimit(1) }
+                }
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func pacingBar(_ pacing: WindowPacing) -> some View {
+        let paceLabel = pacing.isUnderCapPace ? "Under cap pace" : "Over cap pace"
+        return VStack(alignment: .leading, spacing: 5) {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                let timeWidth = max(0, min(width, width * CGFloat(pacing.timeElapsedPercent) / 100))
+                let usedWidth = max(0, min(width, width * CGFloat(pacing.quotaUsedPercent) / 100))
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3).fill(Theme.track)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(Theme.pacingTrack.opacity(0.14))
+                        .frame(width: timeWidth)
+                    Rectangle()
+                        .fill(Theme.pacingTrack.opacity(0.75))
+                        .frame(width: 2, height: 10)
+                        .offset(x: max(0, min(width - 2, timeWidth - 1)))
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
+                        .frame(width: usedWidth, height: 5)
+                }
+            }
+            .frame(height: 10)
+            .accessibilityLabel("Quota Pacing")
+            .accessibilityValue("\(Int((snapshot.remainingPercent ?? 0).rounded())) percent remaining, \(pacing.timeElapsedLabel.lowercased()), \(paceLabel.lowercased())")
+
+            HStack(spacing: 6) {
+                HStack(spacing: 3) {
+                    Circle().fill(Theme.pacingTrack.opacity(0.8)).frame(width: 5, height: 5)
+                    Text("time elapsed · \(pacing.timeElapsedLabel.lowercased())")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                HStack(spacing: 3) {
+                    Image(systemName: pacing.isUnderCapPace ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 9))
+                    Text(paceLabel)
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
+            }
+        }
+        .padding(.vertical, 2)
     }
 }
