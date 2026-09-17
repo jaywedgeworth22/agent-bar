@@ -49,7 +49,6 @@ public enum PlatformLogoImage {
         "grok-cli": ("grok", "svg"),
         "grok-bot": ("grok", "svg"),
         "minimax": ("minimax", "svg"),
-        "deepseek": ("deepseek", "svg"),
         "cursor": ("cursor", "png"),
     ]
 
@@ -102,7 +101,6 @@ public enum PlatformLogoImage {
         case "xai", "grok", "grok-cli", "grok-bot": return "bolt"
         case "minimax": return "m.square"
         case "cursor": return "cursorarrow.rays"
-        case "deepseek": return "waveform.path.ecg"
         default: return "gauge.with.dots.needle.50percent"
         }
     }
