@@ -108,12 +108,21 @@ final class QuotaCoreTests: XCTestCase {
         let future = window(provider: "new-provider", occurred: "2023-11-14T22:05:00Z")
         let response = QuotaResponse(generatedAt: "2023-11-14T22:10:00Z", windows: [future])
         let sections = response.platformSections(now: now)
-        XCTAssertEqual(Array(sections.prefix(8)).map(\.providerKey), [
+        XCTAssertEqual(Array(sections.prefix(7)).map(\.providerKey), [
             "anthropic", "openai", "google-antigravity", "cursor", "xai", "grok-bot", "minimax",
-            "deepseek"
         ])
-        XCTAssertTrue(sections.prefix(8).allSatisfy(\.isMissing))
+        XCTAssertTrue(sections.prefix(7).allSatisfy(\.isMissing))
         XCTAssertEqual(sections.last?.providerKey, "new-provider")
+    }
+
+    func testDeepSeekServerWindowIsDroppedNotShownAsUnknown() {
+        // deepseek was retired as a quota provider; a server payload that still
+        // tags a window deepseek must not resurrect it as a "future" section.
+        let deepseekWindow = window(provider: "deepseek", occurred: "2023-11-14T22:05:00Z")
+        let response = QuotaResponse(generatedAt: "2023-11-14T22:10:00Z", windows: [deepseekWindow])
+        let sections = response.platformSections(now: now)
+        XCTAssertFalse(sections.contains { $0.providerKey == "deepseek" })
+        XCTAssertEqual(sections.count, 7)
     }
 
     func testFreshWindowsSortByLowRemainingAndUnknownLast() {
