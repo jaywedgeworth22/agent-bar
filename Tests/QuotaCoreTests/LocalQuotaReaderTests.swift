@@ -195,6 +195,24 @@ final class LocalQuotaReaderTests: XCTestCase {
         XCTAssertNil(grok.absoluteRemaining)
     }
 
+    func testClaudeRateLimitKeySuffixIsPublishedAsTheModelFamily() async throws {
+        let root = try makeFixtureHome()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try writeJSON(["claudeAiOauth": ["accessToken": "claude-secret", "subscriptionType": "max", "expiresAt": observedAt.addingTimeInterval(3600).timeIntervalSince1970]], to: root.appendingPathComponent(".claude/.credentials.json"))
+        let reader = LocalQuotaReader(homeDirectory: root, now: { self.observedAt }, fetchJSON: { _ in
+            Self.httpResponse(#"{"five_hour_opus":{"utilization":90},"seven_day":{"utilization":60}}"#)
+        }, runAntigravity: { Data("{}".utf8) })
+
+        let claude = await reader.read().windows.filter { $0.providerKey == "anthropic" }
+        let opus = try XCTUnwrap(claude.first { $0.modelId == "opus" })
+        // The suffix names a family, not one model id, so it is what a consumer
+        // can route on when the window carries no exact model.
+        XCTAssertEqual(opus.modelType, "opus")
+        XCTAssertEqual(opus.window, "5h")
+        // A key with no suffix covers the whole subscription; the family stays empty.
+        XCTAssertNil(claude.first { $0.window == "7d" }?.modelType)
+    }
+
     private func writeJSON(_ object: Any, to url: URL) throws {
         let data = try JSONSerialization.data(withJSONObject: object)
         try data.write(to: url, options: .atomic)

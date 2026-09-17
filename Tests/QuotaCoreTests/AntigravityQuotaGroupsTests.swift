@@ -35,6 +35,28 @@ final class AntigravityQuotaGroupsTests: XCTestCase {
         XCTAssertEqual(AntigravityQuotaGroups.normalize([report("gemini-pro", 60), report("gemini-flash", 90)]).first?.remainingPercent, 60)
     }
 
+    func testExhaustedPoolPublishesAnExhaustedStatusRatherThanUnknown() throws {
+        let groups = AntigravityQuotaGroups.normalize([report("gemini-pro", 54.226995), report("claude-sonnet", 0, period: "weekly")])
+        let gemini = try XCTUnwrap(groups.first { $0.id == "antigravity:gemini:5h" })
+        let thirdParty = try XCTUnwrap(groups.first { $0.id == "antigravity:third-party:weekly" })
+        XCTAssertEqual(gemini.status, .available)
+        XCTAssertFalse(gemini.isExhausted)
+        // The grouped summary builds its windows without a status; before this
+        // the pool below read "unknown" at zero and a consumer would route to it.
+        XCTAssertEqual(thirdParty.status, .exhausted)
+        XCTAssertTrue(thirdParty.isExhausted)
+        XCTAssertTrue(thirdParty.skip)
+        XCTAssertEqual(thirdParty.skipReason, "quota exhausted")
+    }
+
+    func testPoolsPublishTheirFamilyAsModelTypeSoConsumersCanRoute() {
+        let groups = AntigravityQuotaGroups.normalize([report("gemini-pro", 80), report("claude-sonnet", 40)], includeMissing: true)
+        XCTAssertEqual(groups.filter { $0.label.hasPrefix("Gemini") }.map(\.modelType), ["gemini", "gemini"])
+        XCTAssertEqual(groups.filter { $0.label.hasPrefix("Third-Party") }.map(\.modelType), ["third-party", "third-party"])
+        // The family must not re-pool a window into the wrong group on a rerun.
+        XCTAssertEqual(AntigravityQuotaGroups.normalize(groups, includeMissing: true), groups)
+    }
+
     private func report(_ model: String, _ percent: Double, period: String? = nil) -> QuotaWindow {
         QuotaWindow(id: model + (period ?? ""), provider: "Antigravity", via: "antigravity", sourceApp: "local-mac",
                     modelId: model, label: model, remainingPercent: percent, resetAt: "2026-09-13T15:00:00Z",

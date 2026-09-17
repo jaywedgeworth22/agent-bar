@@ -328,6 +328,7 @@ private func window(
     resetAt: String?,
     windowToken: String?,
     modelId: String? = nil,
+    modelType: String? = nil,
     absoluteRemaining: Double? = nil,
     absoluteLimit: Double? = nil,
     quotaUnit: String? = nil,
@@ -335,17 +336,15 @@ private func window(
     observedAt: Date
 ) -> QuotaWindow {
     let bounded = percentage(remaining)
-    let exhausted = bounded == 0
     return QuotaWindow(
         id: "local-mac:\(provider.key):\(id)", provider: provider.label,
         providerKey: provider.key, providerLabel: provider.label, via: provider.via,
-        sourceApp: "local-mac", modelId: modelId, label: label,
+        sourceApp: "local-mac", modelId: modelId, modelType: modelType, label: label,
         remainingPercent: bounded, absoluteRemaining: absoluteRemaining, absoluteLimit: absoluteLimit,
-        quotaUnit: quotaUnit, planName: planName, remainingUnknown: bounded == nil, isExhausted: exhausted,
-        resetAt: resetAt, window: windowToken, status: bounded == nil ? .unknown : exhausted ? .exhausted : bounded! < 20 ? .nearCap : .available,
-        skip: exhausted, skipReason: exhausted ? "quota exhausted" : nil,
+        quotaUnit: quotaUnit, planName: planName,
+        resetAt: resetAt, window: windowToken,
         occurredAt: isoFormatter.string(from: observedAt), source: provider.label
-    )
+    ).normalizedForExport()
 }
 
 private func unknownWindow(provider: Provider, label: String, observedAt: Date) -> QuotaWindow {
@@ -365,7 +364,10 @@ private func parseClaude(_ root: [String: Any], planType: String?, observedAt: D
         guard let token = claudeToken(base) ?? claudeToken(key) else { continue }
         let remaining = direct.map(percentage) ?? utilization.map { 100 - min(100, max(0, $0)) }
         let title = model.map { "\($0.prefix(1).uppercased())\($0.dropFirst())" }
-        result.append(window(provider: .claude, id: key, label: title == nil ? "\(token) window" : "\(token) window (\(title!))", remaining: remaining, resetAt: firstTimestamp(value, ["resets_at", "resetsAt", "reset_at", "resetAt"]), windowToken: token, modelId: model, planName: planType, observedAt: observedAt))
+        // The rate-limit key's suffix names the model family, not one model id,
+        // so it is the family a consumer can route on.  Keys with no suffix
+        // cover the whole subscription and leave the family empty.
+        result.append(window(provider: .claude, id: key, label: title == nil ? "\(token) window" : "\(token) window (\(title!))", remaining: remaining, resetAt: firstTimestamp(value, ["resets_at", "resetsAt", "reset_at", "resetAt"]), windowToken: token, modelId: model, modelType: model, planName: planType, observedAt: observedAt))
     }
     return result.sorted { $0.id < $1.id }
 }

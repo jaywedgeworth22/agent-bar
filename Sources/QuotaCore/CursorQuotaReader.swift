@@ -133,17 +133,14 @@ private func cursorWindow(id: String, label: String, values: [String: Any], rese
     let remainingUSD = remainingCents.flatMap { limitUSD == nil ? nil : max(0, $0 / 100) }
         ?? limitCents.flatMap { limit in usedCents.map { max(0, (limit - $0) / 100) } }
     let bounded = remainingPercent
-    let exhausted = bounded == 0
     return QuotaWindow(
         id: "local-mac:cursor:\(id)", provider: "Cursor", providerKey: "cursor", providerLabel: "Cursor",
         sourceApp: "local-mac", label: label, remainingPercent: bounded,
         absoluteRemaining: remainingUSD,
         absoluteLimit: limitUSD, quotaUnit: "USD", planName: planName,
-        remainingUnknown: bounded == nil, isExhausted: exhausted, resetAt: resetAt, window: "billing-cycle",
-        status: bounded == nil ? .unknown : exhausted ? .exhausted : bounded! < 20 ? .nearCap : .available,
-        skip: exhausted, skipReason: exhausted ? "quota exhausted" : nil,
+        resetAt: resetAt, window: "billing-cycle",
         occurredAt: cursorISOFormatter.string(from: observedAt), source: "Cursor"
-    )
+    ).normalizedForExport()
 }
 
 private func cursorUnknownWindow(observedAt: Date) -> QuotaWindow {
