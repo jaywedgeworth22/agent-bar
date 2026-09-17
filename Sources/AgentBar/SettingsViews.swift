@@ -171,15 +171,20 @@ struct SettingsSourcesFleetPage: View {
 
     @State private var pullEndpoint = ""
     @State private var pullToken = ""
+    /// Draft on/off state for the two fleet groups.  Turning a group on only
+    /// unlocks its fields; the setting itself is committed by the group's
+    /// Save button, so an empty endpoint can never deadlock the toggle.
+    @State private var pushEnabled = false
+    @State private var pullEnabled = false
     @State private var pulling = false
     @State private var pullMessage: String?
     @State private var pullSucceeded = false
 
     private var pushDirty: Bool {
-        syncEndpoint != model.syncEndpoint || syncFormat != model.syncFormat || !syncToken.isEmpty
+        pushEnabled != model.syncEnabled || syncEndpoint != model.syncEndpoint || syncFormat != model.syncFormat || !syncToken.isEmpty
     }
     private var pullDirty: Bool {
-        pullEndpoint != model.endpoint || !pullToken.isEmpty
+        pullEnabled != model.serverEnabled || pullEndpoint != model.endpoint || !pullToken.isEmpty
     }
 
     private var dashboardURL: URL? {
@@ -198,7 +203,11 @@ struct SettingsSourcesFleetPage: View {
             syncEndpoint = model.syncEndpoint
             syncFormat = model.syncFormat
             pullEndpoint = model.endpoint
+            pushEnabled = model.syncEnabled
+            pullEnabled = model.serverEnabled
         }
+        .onChange(of: model.syncEnabled) { _, newValue in pushEnabled = newValue }
+        .onChange(of: model.serverEnabled) { _, newValue in pullEnabled = newValue }
     }
 
     // MARK: This Mac
@@ -265,22 +274,23 @@ struct SettingsSourcesFleetPage: View {
     private var shareSection: some View {
         Section {
             Toggle("Push Quotas to a Server", isOn: Binding(
-                get: { model.syncEnabled },
+                get: { pushEnabled },
                 set: { newValue in
-                    Task { try? await model.saveSyncSettings(enabled: newValue, endpoint: syncEndpoint.isEmpty ? model.syncEndpoint : syncEndpoint, token: "", format: syncFormat) }
+                    pushEnabled = newValue
+                    if !newValue { model.disableSync() }
                 }))
             TextField("Ingest Endpoint", text: $syncEndpoint,
                       prompt: Text("https://usage.example.com/api/ingest/usage"))
-                .disabled(!model.syncEnabled)
+                .disabled(!pushEnabled)
                 .onSubmit(savePush)
             SecureField("Ingest Token", text: $syncToken,
                         prompt: Text(model.hasSavedSyncToken ? "Saved in Keychain" : "Ingest Token"))
-                .disabled(!model.syncEnabled)
+                .disabled(!pushEnabled)
                 .onSubmit(savePush)
             Picker("Payload Format", selection: $syncFormat) {
                 ForEach(QuotaSyncFormat.allCases) { Text($0.title).tag($0) }
             }
-            .disabled(!model.syncEnabled)
+            .disabled(!pushEnabled)
 
             if pushDirty {
                 Text("Unsaved changes").font(.system(size: 11)).foregroundStyle(Theme.warning)
@@ -306,7 +316,7 @@ struct SettingsSourcesFleetPage: View {
                 Spacer()
                 if pushing { ProgressView().controlSize(.small) }
                 CommitButton(title: "Save & Push Now", prominent: pushDirty, action: savePush)
-                    .disabled(!model.syncEnabled || pushing)
+                    .disabled(!pushEnabled || pushing)
             }
             if let pushMessage {
                 Text(pushMessage)
@@ -348,7 +358,7 @@ struct SettingsSourcesFleetPage: View {
         Task {
             defer { pushing = false }
             do {
-                try await model.saveSyncSettings(enabled: model.syncEnabled,
+                try await model.saveSyncSettings(enabled: pushEnabled,
                                                  endpoint: syncEndpoint,
                                                  token: syncToken,
                                                  format: syncFormat)
@@ -370,22 +380,18 @@ struct SettingsSourcesFleetPage: View {
     private var pullSection: some View {
         Section {
             Toggle("Show Other Machines' Quotas", isOn: Binding(
-                get: { model.serverEnabled },
+                get: { pullEnabled },
                 set: { newValue in
-                    Task {
-                        try? await model.saveConnection(local: model.localEnabled,
-                                                        server: newValue,
-                                                        endpoint: pullEndpoint.isEmpty ? model.endpoint : pullEndpoint,
-                                                        token: "")
-                    }
+                    pullEnabled = newValue
+                    if !newValue { model.disableServerPull() }
                 }))
             TextField("Quota Endpoint", text: $pullEndpoint,
                       prompt: Text("https://usage.example.com/api/quota-windows"))
-                .disabled(!model.serverEnabled)
+                .disabled(!pullEnabled)
                 .onSubmit(savePull)
             SecureField("Read Token", text: $pullToken,
                         prompt: Text(model.hasSavedToken ? "Saved in Keychain" : "Read Token"))
-                .disabled(!model.serverEnabled)
+                .disabled(!pullEnabled)
                 .onSubmit(savePull)
 
             if pullDirty {
@@ -412,7 +418,7 @@ struct SettingsSourcesFleetPage: View {
                 Spacer()
                 if pulling { ProgressView().controlSize(.small) }
                 CommitButton(title: "Save & Fetch Now", prominent: pullDirty, action: savePull)
-                    .disabled(!model.serverEnabled || pulling)
+                    .disabled(!pullEnabled || pulling)
             }
             if let pullMessage {
                 Text(pullMessage)
@@ -464,7 +470,7 @@ struct SettingsSourcesFleetPage: View {
             defer { pulling = false }
             do {
                 try await model.saveConnection(local: model.localEnabled,
-                                               server: model.serverEnabled,
+                                               server: pullEnabled,
                                                endpoint: pullEndpoint,
                                                token: pullToken)
                 let (ok, message) = await model.testPullConnection(endpoint: pullEndpoint, token: pullToken)
