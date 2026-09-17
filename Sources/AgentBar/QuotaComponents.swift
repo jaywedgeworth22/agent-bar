@@ -60,8 +60,10 @@ enum Metrics {
     static let toolbarHeight: CGFloat = 52
     static let pagePadding: CGFloat = 20
 
-    static func glanceMaxHeight() -> CGFloat {
-        (NSScreen.main?.visibleFrame.height ?? 720) - 24
+    /// The screen is the one the status item was clicked on, not `NSScreen.main`
+    /// — that is the key window's screen, and nil when no window is key.
+    static func glanceMaxHeight(on screen: NSScreen?) -> CGFloat {
+        ((screen ?? NSScreen.main)?.visibleFrame.height ?? 720) - 24
     }
 }
 
@@ -197,7 +199,7 @@ extension QuotaPlatformSection {
 /// platform appears or disappears between refreshes.
 enum QuotaGlanceMetrics {
     @MainActor
-    static func popoverHeight(for model: MonitorModel) -> CGFloat {
+    static func popoverHeight(for model: MonitorModel, on screen: NSScreen? = nil) -> CGFloat {
         guard model.localEnabled || model.serverEnabled else {
             return Metrics.glanceMinHeight
         }
@@ -217,7 +219,7 @@ enum QuotaGlanceMetrics {
             + CGFloat(ctaRows) * (Metrics.glanceCTARowHeight + 26)
             + (fleetCount > 0 ? 12 : 0)
         let total = Metrics.glanceHeaderHeight + Metrics.glanceFooterHeight + 18 + content
-        return min(Metrics.glanceMaxHeight(), max(Metrics.glanceMinHeight, total))
+        return min(Metrics.glanceMaxHeight(on: screen), max(Metrics.glanceMinHeight, total))
     }
 }
 

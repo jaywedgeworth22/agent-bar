@@ -120,8 +120,9 @@ struct SettingsPlatformsPage: View {
                 .onMove(perform: move)
             }
             .listStyle(.inset)
-            .frame(minHeight: 240)
-            .frame(maxHeight: CGFloat(orderedKeys.count) * 30 + 16)
+            // One expression, because a `minHeight` of 240 above a `maxHeight`
+            // of 226 (seven platforms) clipped the last row by 14pt.
+            .frame(height: max(240, CGFloat(orderedKeys.count) * 30 + 16))
 
             HStack {
                 Spacer()

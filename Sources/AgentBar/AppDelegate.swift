@@ -187,8 +187,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         else {
             // Sized immediately before every show, from the expected provider
             // count, so the popover cannot resize while it is open.
+            // The ceiling comes from the screen the status item is on, not
+            // from the key window's screen, or a short second display clamps to
+            // a tall main display and pushes the footer off-screen.
+            let screen = button.window?.screen ?? NSScreen.main
             popover.contentSize = NSSize(width: Metrics.glanceWidth,
-                                         height: QuotaGlanceMetrics.popoverHeight(for: model))
+                                         height: QuotaGlanceMetrics.popoverHeight(for: model, on: screen))
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
@@ -205,16 +209,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: Metrics.consoleDefault),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
-            window.minSize = Metrics.consoleMin
+            window.contentMinSize = Metrics.consoleMin
             window.isReleasedWhenClosed = false
             window.isRestorable = false
             window.delegate = self
             // A hosting CONTROLLER, not a bare hosting view: the controller
             // respects the titlebar's safe area, so scrolled content does not
             // smear through the translucent title bar.
-            window.contentViewController = NSHostingController(rootView: ConsoleView(model: model, state: consoleState))
+            let console = NSHostingController(rootView: ConsoleView(model: model, state: consoleState))
+            // A non-zero preferred content size on a window's content view
+            // controller resizes the window to it, which would override both the
+            // default content rect and any frame restored below.
+            console.sizingOptions = []
+            window.contentViewController = console
+            // Restore first, centre only when there is nothing to restore:
+            // `center()` after the autosave name discarded the saved origin on
+            // every launch.
+            if !window.setFrameUsingName("AgentBarConsoleWindow") { window.center() }
             window.setFrameAutosaveName("AgentBarConsoleWindow")
-            window.center()
             consoleWindow = window
         }
         consoleWindow?.title = consoleState.page.isSettings ? "AgentBar Settings" : "AgentBar"
