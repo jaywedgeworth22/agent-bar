@@ -146,6 +146,7 @@
       <li><strong>Grok Bot</strong> — weekly usage, read via Cursor's dashboard service, from that same session database.</li>
       <li><strong>MiniMax</strong> — per-model and weekly remaining quota, read from <code>~/.mmx/config.json</code>.</li>
     </ul>
+    <p>The first time a freshly installed AgentBar needs Claude Code’s Keychain item, macOS asks whether to let it through.  The login Keychain grants access per app, so a brand new AgentBar is a brand new app to it, and Claude can read as signed out while Claude Code is signed in.  Press <strong>Allow Access To Claude Code</strong> on the Claude row in Settings → Sources &amp; Fleet and choose <strong>Always Allow</strong>: it is asked once, it is a read, and AgentBar never writes to or removes Claude Code’s saved login.</p>
   </section>
 
   <section id="fleet" class="container">

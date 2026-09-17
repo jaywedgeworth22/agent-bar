@@ -95,12 +95,24 @@ struct GlancePopover: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
+            if let consentMessage {
+                Spacer().frame(height: 10)
+                ConsentRow(message: consentMessage) { openConsole(.settingsSourcesFleet) }
+                    .padding(.horizontal, Metrics.glanceGutter)
+            }
             if showsFleetSetup {
                 Spacer().frame(height: 12)
                 FleetSetupRow { openConsole(.settingsSourcesFleet) }
                     .padding(.horizontal, Metrics.glanceGutter)
             }
         }
+    }
+
+    /// The short issue text for a reader whose saved login is on this Mac but
+    /// unreadable until the owner allows this build once.  Glance is the
+    /// surface that actually gets opened, so it has to say so.
+    private var consentMessage: String? {
+        model.consentNeeded.sorted().compactMap { model.issues[$0] }.first
     }
 
     private func groupHeader(_ title: String) -> some View {
@@ -208,6 +220,7 @@ struct GlanceRow: View {
             return countdown.isEmpty ? "no reset time" : countdown
         }
         if let issue {
+            if issue.localizedCaseInsensitiveContains("permission") { return "needs permission" }
             return issue.localizedCaseInsensitiveContains("sign in") ? "not signed in" : "unavailable"
         }
         return section.windows.isEmpty ? "no report" : "not signed in"
@@ -309,6 +322,38 @@ struct GlanceRow: View {
         }
         if let issue { parts.append(issue) }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// Shown below the platform list when a reader's saved login is present on
+/// this Mac but unreadable until the owner allows this build once.  The button
+/// deep-links to Sources & Fleet, where the one-time step lives.
+struct ConsentRow: View {
+    let message: String
+    var action: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "lock.circle")
+                .font(.system(size: 16))
+                .foregroundStyle(Theme.warning)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(message)
+                    .font(.system(size: 12, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open Settings", action: action)
+                    .controlSize(.small)
+                    .help("Open Settings")
+                    .accessibilityLabel("Open Settings")
+            }
+            Spacer(minLength: 4)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.warning.opacity(0.35)))
     }
 }
 

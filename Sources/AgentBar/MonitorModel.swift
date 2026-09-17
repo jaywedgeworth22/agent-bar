@@ -102,6 +102,10 @@ final class MonitorModel: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastChecked: Date?
     @Published private(set) var issues: [String: String] = [:]
+    /// Provider keys whose saved login is on this Mac but unreadable until the
+    /// owner allows this build once.  Drives the Allow Access To Claude Code
+    /// button and the Open Settings affordance beside the issue text.
+    @Published private(set) var consentNeeded: Set<String> = []
     @Published private(set) var serverError: String?
     @Published private(set) var handoffError: String?
     @Published private(set) var now = Date()
@@ -412,6 +416,23 @@ final class MonitorModel: ObservableObject {
         return (false, "The saved token is still unavailable." + sentenceGap + "Paste the token again.")
     }
 
+    // MARK: - Claude Code Consent
+
+    /// One interactive Keychain read of Claude Code's own saved login, so
+    /// macOS can show its panel and the owner can press Always Allow.  Reached
+    /// only from Allow Access To Claude Code; the refresh loop never gets
+    /// here, and nothing on this path writes to or deletes Claude Code's item.
+    func allowClaudeCodeAccess() async -> (success: Bool, message: String) {
+        let granted = await ClaudeCredentialSource.readAllowingInteraction()
+        if granted {
+            consentNeeded.remove("anthropic")
+            refresh()
+            return (true, "Claude Code's saved login is readable now.")
+        }
+        return (false, "Access was not granted." + sentenceGap
+                + "Try again and choose Always Allow when macOS asks.")
+    }
+
     // MARK: - Server Pull Settings
 
     func testPullConnection(endpoint input: String, token inputToken: String) async -> (success: Bool, message: String) {
@@ -607,9 +628,11 @@ final class MonitorModel: ObservableObject {
             self.lastChecked = self.now
             if let local {
                 self.issues = local.issues
+                self.consentNeeded = local.consentNeeded
                 self.localWindows = AntigravityQuotaGroups.normalize(local.windows)
             } else {
                 self.issues = [:]
+                self.consentNeeded = []
                 self.localWindows = []
             }
 
@@ -683,7 +706,8 @@ final class MonitorModel: ObservableObject {
             windows += summary.windows
             issues["google-antigravity"] = nil
         }
-        return LocalQuotaResult(windows: windows, issues: issues)
+        let consentNeeded = results.reduce(into: Set<String>()) { $0.formUnion($1.consentNeeded) }
+        return LocalQuotaResult(windows: windows, issues: issues, consentNeeded: consentNeeded)
     }
 }
 

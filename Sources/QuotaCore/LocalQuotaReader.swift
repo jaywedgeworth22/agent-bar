@@ -8,10 +8,18 @@ import Foundation
 public struct LocalQuotaResult: Equatable, Sendable {
     public let windows: [QuotaWindow]
     public let issues: [String: String]
+    /// Provider keys whose credential exists on this Mac but is unreadable
+    /// until the owner allows this build once.  Kept apart from `issues`
+    /// because it is the difference between "sign in" — which the owner
+    /// cannot act on when they already have — and a button they can press.
+    public let consentNeeded: Set<String>
 
-    public init(windows: [QuotaWindow] = [], issues: [String: String] = [:]) {
+    public init(windows: [QuotaWindow] = [],
+                issues: [String: String] = [:],
+                consentNeeded: Set<String> = []) {
         self.windows = windows
         self.issues = issues
+        self.consentNeeded = consentNeeded
     }
 }
 
@@ -27,7 +35,7 @@ public struct LocalQuotaReader: Sendable {
     private let now: @Sendable () -> Date
     private let fetchJSON: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
     private let runAntigravity: @Sendable () async throws -> Data
-    private let readClaudeKeychain: @Sendable () async -> Data?
+    private let readClaudeCredential: @Sendable () async -> ClaudeCredentialAccess
 
     private static let maxCredentialBytes = 1_048_576
     private static let maxResponseBytes = 1_048_576
@@ -43,16 +51,16 @@ public struct LocalQuotaReader: Sendable {
         now: @escaping @Sendable () -> Date = { Date() },
         fetchJSON: (@Sendable (URLRequest) async throws -> (Data, HTTPURLResponse))? = nil,
         runAntigravity: (@Sendable () async throws -> Data)? = nil,
-        readClaudeKeychain: (@Sendable () async -> Data?)? = nil
+        readClaudeCredential: (@Sendable () async -> ClaudeCredentialAccess)? = nil
     ) {
         self.homeDirectory = homeDirectory.standardizedFileURL
         self.now = now
         self.fetchJSON = fetchJSON ?? Self.makeFetcher()
         self.runAntigravity = runAntigravity ?? Self.makeAntigravityRunner(homeDirectory: self.homeDirectory)
-        if let readClaudeKeychain { self.readClaudeKeychain = readClaudeKeychain }
+        if let readClaudeCredential { self.readClaudeCredential = readClaudeCredential }
         else if self.homeDirectory == FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL {
-            self.readClaudeKeychain = { await ClaudeCredentialSource.read() }
-        } else { self.readClaudeKeychain = { nil } }
+            self.readClaudeCredential = { await ClaudeCredentialSource.access() }
+        } else { self.readClaudeCredential = { .missing } }
     }
 
     /// Reads all configured local sources concurrently.  This method never
@@ -65,12 +73,14 @@ public struct LocalQuotaReader: Sendable {
 
             var windows: [QuotaWindow] = []
             var issues: [String: String] = [:]
+            var consentNeeded: Set<String> = []
             for await result in group {
                 windows.append(contentsOf: result.windows)
                 if let issue = result.issue { issues[result.provider.key] = issue }
+                if result.needsConsent { consentNeeded.insert(result.provider.key) }
             }
             windows.sort { ($0.providerKey ?? $0.provider, $0.id) < ($1.providerKey ?? $1.provider, $1.id) }
-            return LocalQuotaResult(windows: windows, issues: issues)
+            return LocalQuotaResult(windows: windows, issues: issues, consentNeeded: consentNeeded)
         }
     }
 
@@ -102,12 +112,20 @@ public struct LocalQuotaReader: Sendable {
             return value
         }
         var candidate = validOAuth(file)
-        if candidate == nil, let data = await ClaudeCredentialSource.boundedRead({ await readClaudeKeychain() }), data.count <= Self.maxCredentialBytes,
-           let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
-            candidate = validOAuth(root)
+        // The Keychain is consulted only when Claude Code's own file has no
+        // usable credential, so a fresh file never costs a Keychain call.
+        var access = ClaudeCredentialAccess.missing
+        if candidate == nil {
+            access = await ClaudeCredentialSource.boundedAccess { await readClaudeCredential() }
+            if let data = access.data, data.count <= Self.maxCredentialBytes,
+               let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                candidate = validOAuth(root)
+            }
         }
         guard let oauth = candidate, let token = firstString(oauth, ["accessToken", "access_token"]) else {
-            return ProviderRead(provider: provider, windows: [], issue: "Claude Code quota login is unavailable.  Sign in to Claude Code to connect subscription quotas.")
+            let state = ClaudeLoginState.resolve(hasUsableCredential: false, access: access)
+            return ProviderRead(provider: provider, windows: [], issue: state.issue,
+                                needsConsent: state.needsConsent)
         }
 
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
@@ -254,6 +272,9 @@ private struct ProviderRead: Sendable {
     let provider: Provider
     let windows: [QuotaWindow]
     let issue: String?
+    /// True only for the Claude reader, and only when a Claude Code login is
+    /// present but this build has not been allowed to read it.
+    var needsConsent: Bool = false
 }
 
 private enum LocalReaderError: Error {

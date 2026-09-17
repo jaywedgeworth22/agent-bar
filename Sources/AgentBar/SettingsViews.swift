@@ -182,6 +182,9 @@ struct SettingsSourcesFleetPage: View {
     @State private var reauthorizingPull = false
     @State private var pullMessage: String?
     @State private var pullSucceeded = false
+    @State private var allowingClaude = false
+    @State private var claudeConsentMessage: String?
+    @State private var claudeConsentSucceeded = false
 
     private var pushDirty: Bool {
         pushEnabled != model.syncEnabled || syncEndpoint != model.syncEndpoint || syncFormat != model.syncFormat || !syncToken.isEmpty
@@ -244,6 +247,9 @@ struct SettingsSourcesFleetPage: View {
         let section = model.sections.first { $0.providerKey == reader.providerKey }
         let issue = model.issues[reader.providerKey]
         let healthy = issue == nil && !(section?.windows.isEmpty ?? true)
+        // A reader whose credential is on this Mac but unreadable by this
+        // build gets a button rather than a sentence it cannot act on.
+        let needsConsent = model.consentNeeded.contains(reader.providerKey)
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
                 PlatformLogo(providerKey: reader.providerKey, size: 16)
@@ -269,8 +275,50 @@ struct SettingsSourcesFleetPage: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
+            if needsConsent { claudeConsentControls }
         }
-        .accessibilityElement(children: .combine)
+        // A row carrying a button must stay navigable, so only the plain rows
+        // collapse into one element.
+        .accessibilityElement(children: needsConsent ? .contain : .combine)
+    }
+
+    /// The one-time consent step.  macOS guards another app's Keychain item
+    /// per code identity, so a freshly installed AgentBar has to be allowed
+    /// once before it can read Claude Code's saved login.
+    @ViewBuilder
+    private var claudeConsentControls: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                Button("Allow Access To Claude Code") {
+                    allowingClaude = true
+                    claudeConsentMessage = nil
+                    Task {
+                        defer { allowingClaude = false }
+                        let (ok, message) = await model.allowClaudeCodeAccess()
+                        claudeConsentSucceeded = ok
+                        claudeConsentMessage = message
+                    }
+                }
+                .disabled(allowingClaude)
+                .help("Allow Access To Claude Code")
+                .accessibilityLabel("Allow Access To Claude Code")
+                .accessibilityHint("Asks macOS once for permission to read Claude Code's saved login.")
+                if allowingClaude {
+                    ProgressView().controlSize(.small)
+                }
+            }
+            Text("macOS will ask once." + sentenceGap + "Choose Always Allow.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let claudeConsentMessage {
+                Text(claudeConsentMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(claudeConsentSucceeded ? Theme.accent : Theme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.top, 2)
     }
 
 
