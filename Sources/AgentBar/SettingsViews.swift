@@ -95,7 +95,7 @@ struct SettingsPlatformsPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Drag to reorder." + sentenceGap
-                 + "This order is used in the quota list, in Glance and in the menu bar.")
+                 + "This order is used in the quota list and in Glance.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -214,9 +214,9 @@ struct SettingsSourcesFleetPage: View {
             Eyebrow("THIS MAC")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("AgentBar reads each CLI's own credential files in place." + sentenceGap
+                Text("AgentBar reads each CLI's own saved credentials in place." + sentenceGap
                      + "It never asks you for a provider API key.")
-                Text("A snapshot is written to ~/.agent-bar/quota-snapshot.json for BotFleet.")
+                Text("A snapshot is written to ~/Library/Application Support/Usage Monitor/quota-windows.json for BotFleet.")
                 if let handoffError = model.handoffError {
                     Text(handoffError).foregroundStyle(Theme.warning)
                 }
@@ -335,7 +335,7 @@ struct SettingsSourcesFleetPage: View {
                 }
             }
         } footer: {
-            Text("You can also set the USAGE_INGEST_TOKEN environment variable instead of saving a token here.")
+            Text("The Ingest Token is stored in your Keychain, never in a preference file.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -486,13 +486,13 @@ struct ReaderStatus {
     let source: String
 
     static let all: [ReaderStatus] = [
-        ReaderStatus(providerKey: "anthropic", label: "Claude", source: "Keychain credentials"),
-        ReaderStatus(providerKey: "openai", label: "Codex", source: "Codex CLI session"),
-        ReaderStatus(providerKey: "google-antigravity", label: "Antigravity", source: "Summary and CLI"),
+        ReaderStatus(providerKey: "anthropic", label: "Claude", source: "Claude Code credentials"),
+        ReaderStatus(providerKey: "openai", label: "Codex", source: "Codex CLI credentials"),
+        ReaderStatus(providerKey: "google-antigravity", label: "Antigravity", source: "Antigravity app or CLI"),
         ReaderStatus(providerKey: "cursor", label: "Cursor", source: "Cursor app session"),
-        ReaderStatus(providerKey: "xai", label: "Grok CLI", source: "Grok CLI session"),
+        ReaderStatus(providerKey: "xai", label: "Grok CLI", source: "Grok CLI credentials"),
         ReaderStatus(providerKey: "grok-bot", label: "Grok Bot", source: "Cursor app session"),
-        ReaderStatus(providerKey: "minimax", label: "MiniMax", source: "MiniMax CLI session"),
+        ReaderStatus(providerKey: "minimax", label: "MiniMax", source: "MiniMax CLI credentials"),
     ]
 }
 
