@@ -27,10 +27,10 @@ struct MonitorDashboard: View {
                         summary
                         if let error = model.serverError {
                             Label("Server: \(error)  Local readings remain available.", systemImage: "exclamationmark.triangle")
-                                .font(.callout).foregroundStyle(Palette.warning)
+                                .font(.callout).foregroundStyle(Theme.warning)
                         }
                         if let error = model.handoffError {
-                            Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Palette.warning)
+                            Label(error, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(Theme.warning)
                         }
                         if !model.localEnabled && !model.serverEnabled {
                             ContentUnavailableView("Connect a Quota Source", systemImage: "link",
@@ -72,19 +72,19 @@ struct MonitorDashboard: View {
                     }
                     .padding(26)
                 }
-                .background(Palette.background)
+                .background(Theme.background)
                 .id(selected + query)
             }
         }
-        .foregroundStyle(Palette.ink)
-        .tint(Palette.accent)
-        .preferredColorScheme(.light)
+        .foregroundStyle(Theme.ink)
+        .tint(Theme.accent)
+        
     }
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 9) {
-                Image(systemName: "gauge.with.dots.needle.50percent").font(.title2).foregroundStyle(Palette.accent)
+                Image(systemName: "gauge.with.dots.needle.50percent").font(.title2).foregroundStyle(Theme.accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("AgentBar").font(.headline)
                     Text("AGENT SUBSCRIPTIONS").font(.system(size: 8, weight: .semibold, design: .rounded)).tracking(1.1).foregroundStyle(.secondary)
@@ -117,7 +117,7 @@ struct MonitorDashboard: View {
             }.padding(18)
         }
         .frame(width: 208)
-        .background(Color.white)
+        .background(Theme.surface)
     }
 
     private var header: some View {
@@ -137,7 +137,7 @@ struct MonitorDashboard: View {
             Button { model.refresh() } label: {
                 Label(model.isRefreshing ? "Refreshing" : "Refresh", systemImage: "arrow.clockwise")
             }.disabled(model.isRefreshing)
-        }.padding(22).background(Color.white)
+        }.padding(22).background(Theme.surface)
     }
 
     private var summary: some View {
@@ -190,7 +190,7 @@ struct CompactDashboardPlatformCard: View {
                 if !section.windows.isEmpty {
                     Text(issue == nil && section.hasFreshReport ? "LIVE" : "LAST REPORT")
                         .font(.system(size: 8, weight: .bold)).tracking(0.6)
-                        .foregroundStyle(issue == nil && section.hasFreshReport ? Palette.accent : Palette.warning)
+                        .foregroundStyle(issue == nil && section.hasFreshReport ? Theme.accent : Theme.warning)
                 }
             }
 
@@ -208,8 +208,8 @@ struct CompactDashboardPlatformCard: View {
             }
         }
         .padding(12)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.black.opacity(0.06)))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline))
     }
 }
 
@@ -237,7 +237,7 @@ struct CompactDashboardQuotaRow: View {
             if let pct = snapshot.remainingPercent {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.black.opacity(0.07))
+                        Capsule().fill(Theme.track)
                         Capsule().fill(color).frame(width: geo.size.width * CGFloat(min(max(pct, 0), 100)) / 100)
                     }
                 }

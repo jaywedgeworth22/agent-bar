@@ -65,7 +65,7 @@ struct MonitorSettings: View {
             .frame(maxHeight: .infinity, alignment: .top)
 
             if let message {
-                Text(message).font(.caption).foregroundStyle(isError ? Palette.danger : Palette.accent)
+                Text(message).font(.caption).foregroundStyle(isError ? Theme.danger : Theme.accent)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -131,7 +131,7 @@ struct MonitorSettings: View {
             if saving { ProgressView("Saving settings…").font(.caption) }
         }
         .disabled(saving)
-        .padding(24).frame(width: 620, height: 560).tint(Palette.accent).preferredColorScheme(.light)
+        .padding(24).frame(width: 620, height: 560).tint(Theme.accent)
         .onAppear {
             local = model.localEnabled
             server = model.serverEnabled
@@ -228,7 +228,7 @@ struct MonitorSettings: View {
                                         }
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 5)
-                                        .background(selectedPlatformKey == section.providerKey ? Palette.accent.opacity(0.12) : Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: 6))
+                                        .background(selectedPlatformKey == section.providerKey ? Theme.accent.opacity(0.12) : Theme.hairline, in: RoundedRectangle(cornerRadius: 6))
                                         .contentShape(Rectangle())
                                         .onTapGesture {
                                             saveCurrentPlatformCustomInfo()
@@ -374,7 +374,7 @@ struct MonitorSettings: View {
                         } else if let testResultMessage {
                             Text(testResultMessage)
                                 .font(.caption)
-                                .foregroundStyle(testResultSuccess ? Palette.accent : Palette.danger)
+                                .foregroundStyle(testResultSuccess ? Theme.accent : Theme.danger)
                                 .lineLimit(2)
                         }
                     }
@@ -440,7 +440,7 @@ struct MonitorSettings: View {
                         } else if let testPullMessage {
                             Text(testPullMessage)
                                 .font(.caption)
-                                .foregroundStyle(testPullSuccess ? Palette.accent : Palette.danger)
+                                .foregroundStyle(testPullSuccess ? Theme.accent : Theme.danger)
                                 .lineLimit(1)
                         }
                     }

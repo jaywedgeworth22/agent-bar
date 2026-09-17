@@ -34,7 +34,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var subscriptions = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.appearance = NSAppearance(named: .aqua)
         configureMenu()
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 410, height: 600)
@@ -43,6 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                          openSettings: { [weak self] in self?.showSettings() }))
         model.$displayMode.removeDuplicates().sink { [weak self] mode in
             self?.apply(mode)
+        }.store(in: &subscriptions)
+        model.$appearance.removeDuplicates().sink { appearance in
+            switch appearance {
+            case .light: NSApp.appearance = NSAppearance(named: .aqua)
+            case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+            case .system: NSApp.appearance = nil
+            }
         }.store(in: &subscriptions)
         model.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { self?.updateStatus() }

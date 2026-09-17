@@ -2,14 +2,72 @@ import AppKit
 import QuotaCore
 import SwiftUI
 
-enum Palette {
-    static let ink = Color(red: 0.12, green: 0.17, blue: 0.23)
-    static let accent = Color(red: 0.03, green: 0.45, blue: 0.43)
-    static let background = Color(red: 0.96, green: 0.97, blue: 0.97)
-    static let warning = Color(red: 0.66, green: 0.36, blue: 0.02)
-    static let danger = Color(red: 0.75, green: 0.20, blue: 0.23)
-    static let pacingTrack = Color(red: 0.15, green: 0.35, blue: 0.65)
+/// The whole colour vocabulary, in one place, with a dark value for every
+/// token.  A dynamic `NSColor` resolves per appearance, so the SPM target needs
+/// no asset catalog and nothing has to be re-rendered when the theme changes.
+enum Theme {
+    static let ink = dyn(hex(0x1F2B3A), hex(0xE8ECF1))
+    static let accent = dyn(hex(0x087370), hex(0x4FD1C5))
+    static let warning = dyn(hex(0xA85C05), hex(0xF0B45A))
+    static let danger = dyn(hex(0xBF3339), hex(0xFF6B6B))
+    static let background = dyn(hex(0xF5F7F7), hex(0x1C1E20))
+    static let surface = dyn(hex(0xFFFFFF), hex(0x26292C))
+    static let hairline = dyn(NSColor.black.withAlphaComponent(0.06),
+                              NSColor.white.withAlphaComponent(0.10))
+    static let pacingTrack = dyn(hex(0x2659A6), hex(0x7FA8E8))
+    static let fleet = dyn(hex(0x4B4FA8), hex(0x8A8EE0))
+
+    /// Unfilled portion of any progress bar.  A black 6% track disappears on a
+    /// dark surface, so this is a token rather than a literal at each call site.
+    static let track = dyn(NSColor.black.withAlphaComponent(0.08),
+                           NSColor.white.withAlphaComponent(0.14))
+
+    /// Fill behind a selected or highlighted row.
+    static let selection = dyn(hex(0x087370).withAlphaComponent(0.12),
+                               hex(0x4FD1C5).withAlphaComponent(0.18))
+
+    private static func dyn(_ light: NSColor, _ dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) {
+            $0.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+        })
+    }
+
+    private static func hex(_ value: UInt32) -> NSColor {
+        NSColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255,
+                green: CGFloat((value >> 8) & 0xFF) / 255,
+                blue: CGFloat(value & 0xFF) / 255,
+                alpha: 1)
+    }
 }
+
+/// Every surface dimension the design fixes, declared once so the AppKit call
+/// site and the SwiftUI root cannot disagree the way the old 580x510 window and
+/// its 620x560 content did.
+enum Metrics {
+    static let glanceWidth: CGFloat = 360
+    static let glanceMinHeight: CGFloat = 200
+    static let glanceGutter: CGFloat = 12
+    static let glanceHeaderHeight: CGFloat = 32
+    static let glanceFooterHeight: CGFloat = 38
+    static let glanceGroupHeaderHeight: CGFloat = 18
+    static let glanceLocalRowHeight: CGFloat = 34
+    static let glanceFleetRowHeight: CGFloat = 46
+    static let glanceCTARowHeight: CGFloat = 52
+
+    static let consoleDefault = NSSize(width: 960, height: 640)
+    static let consoleMin = NSSize(width: 820, height: 560)
+    static let sidebarWidth: CGFloat = 200
+    static let toolbarHeight: CGFloat = 52
+    static let pagePadding: CGFloat = 20
+
+    static func glanceMaxHeight() -> CGFloat {
+        (NSScreen.main?.visibleFrame.height ?? 720) - 24
+    }
+}
+
+/// Two sentences in one UI string are separated by this, never by a bare space.
+/// A no-break space plus a space survives every renderer AppKit hands it.
+let sentenceGap = "\u{00A0} "
 
 struct SummaryTile: View {
     let label: String
@@ -23,8 +81,8 @@ struct SummaryTile: View {
             Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
         }
         .frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-        .padding(16).background(Color.white, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.black.opacity(0.06)))
+        .padding(16).background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
     }
 }
 
@@ -80,7 +138,7 @@ struct PlatformCard: View {
                 if !section.windows.isEmpty {
                     Text(issue == nil && section.hasFreshReport ? "LIVE" : "LAST REPORT")
                         .font(.system(size: 8, weight: .bold)).tracking(0.7)
-                        .foregroundStyle(issue == nil && section.hasFreshReport ? Palette.accent : Palette.warning)
+                        .foregroundStyle(issue == nil && section.hasFreshReport ? Theme.accent : Theme.warning)
                 }
             }
             if section.windows.isEmpty {
@@ -95,7 +153,7 @@ struct PlatformCard: View {
                         ForEach(displayedWindows, id: \.window.id) { snapshot in
                             QuotaRow(snapshot: snapshot, now: now, sourceFailed: issue != nil, compact: compact)
                                 .padding(12)
-                                .background(Palette.background, in: RoundedRectangle(cornerRadius: 8))
+                                .background(Theme.background, in: RoundedRectangle(cornerRadius: 8))
                         }
                     }
                 } else {
@@ -106,7 +164,7 @@ struct PlatformCard: View {
                 }
                 if primaryWindows.count > 4 {
                     Button(expanded ? "Show Less" : "Show All \(primaryWindows.count) Windows") { expanded.toggle() }
-                        .buttonStyle(.plain).font(.caption.weight(.medium)).foregroundStyle(Palette.accent)
+                        .buttonStyle(.plain).font(.caption.weight(.medium)).foregroundStyle(Theme.accent)
                 }
                 if !videoWindows.isEmpty {
                     Divider()
@@ -123,14 +181,14 @@ struct PlatformCard: View {
                 }
                 if let issue {
                     Label(issue, systemImage: "exclamationmark.circle")
-                        .font(.caption).foregroundStyle(Palette.warning).fixedSize(horizontal: false, vertical: true)
+                        .font(.caption).foregroundStyle(Theme.warning).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
         .padding(compact ? 14 : 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.black.opacity(0.07)))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline))
     }
 }
 
@@ -141,9 +199,9 @@ struct QuotaRow: View {
     let compact: Bool
     private var tint: Color {
         if !snapshot.isFresh || sourceFailed || snapshot.remainingPercent == nil { return .secondary }
-        if snapshot.status == .exhausted { return Palette.danger }
-        if (snapshot.remainingPercent ?? 100) <= 20 { return Palette.warning }
-        return Palette.accent
+        if snapshot.status == .exhausted { return Theme.danger }
+        if (snapshot.remainingPercent ?? 100) <= 20 { return Theme.warning }
+        return Theme.accent
     }
 
     var body: some View {
@@ -172,22 +230,22 @@ struct QuotaRow: View {
                         ZStack(alignment: .leading) {
                             // Total window track
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(Color.black.opacity(0.06))
+                                .fill(Theme.hairline)
 
                             // Time elapsed backdrop zone
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(Palette.pacingTrack.opacity(0.14))
+                                .fill(Theme.pacingTrack.opacity(0.14))
                                 .frame(width: timeWidth)
 
                             // Time progress pin
                             Rectangle()
-                                .fill(Palette.pacingTrack.opacity(0.75))
+                                .fill(Theme.pacingTrack.opacity(0.75))
                                 .frame(width: 2, height: 10)
                                 .offset(x: max(0, min(width - 2, timeWidth - 1)))
 
                             // Quota used fill bar
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(pacing.isUnderCapPace ? Palette.accent : Palette.warning)
+                                .fill(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
                                 .frame(width: usedWidth, height: 5)
                         }
                     }
@@ -195,7 +253,7 @@ struct QuotaRow: View {
 
                     HStack(spacing: 6) {
                         HStack(spacing: 3) {
-                            Circle().fill(Palette.pacingTrack.opacity(0.8)).frame(width: 5, height: 5)
+                            Circle().fill(Theme.pacingTrack.opacity(0.8)).frame(width: 5, height: 5)
                             Text(pacing.timeElapsedLabel)
                                 .font(.system(size: 9))
                                 .foregroundStyle(.secondary)
@@ -206,10 +264,10 @@ struct QuotaRow: View {
                         HStack(spacing: 3) {
                             Image(systemName: pacing.isUnderCapPace ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                                 .font(.system(size: 8))
-                                .foregroundStyle(pacing.isUnderCapPace ? Palette.accent : Palette.warning)
+                                .foregroundStyle(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
                             Text(pacing.paceDescription)
                                 .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(pacing.isUnderCapPace ? Palette.accent : Palette.warning)
+                                .foregroundStyle(pacing.isUnderCapPace ? Theme.accent : Theme.warning)
                         }
                     }
                 }
@@ -218,7 +276,7 @@ struct QuotaRow: View {
                 // Standard single progress bar
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.black.opacity(0.06))
+                        Capsule().fill(Theme.track)
                         Capsule().fill(tint).frame(width: geometry.size.width * remaining / 100)
                     }
                 }.frame(height: 5)
@@ -245,7 +303,7 @@ struct QuotaRow: View {
                     Text(snapshot.observedAt.map { "Updated \($0.formatted(date: .omitted, time: .shortened))" } ?? "Update time unavailable")
                     Spacer()
                     if snapshot.observedAt == nil { Text("Not reported") }
-                    else if snapshot.isStale { Text("Stale").foregroundStyle(Palette.warning) }
+                    else if snapshot.isStale { Text("Stale").foregroundStyle(Theme.warning) }
                     else if let source = snapshot.window.source { Text(source).lineLimit(1) }
                 }.font(.system(size: 9)).foregroundStyle(.tertiary)
             }
@@ -255,9 +313,9 @@ struct QuotaRow: View {
 
 func quotaStatusColor(for snapshot: QuotaWindowSnapshot, sourceFailed: Bool) -> Color {
     if !snapshot.isFresh || sourceFailed || snapshot.remainingPercent == nil { return .secondary }
-    if snapshot.status == .exhausted { return Palette.danger }
-    if (snapshot.remainingPercent ?? 100) <= 20 { return Palette.warning }
-    return Palette.accent
+    if snapshot.status == .exhausted { return Theme.danger }
+    if (snapshot.remainingPercent ?? 100) <= 20 { return Theme.warning }
+    return Theme.accent
 }
 
 func compactWindowName(_ label: String) -> String {

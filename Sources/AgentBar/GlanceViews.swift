@@ -43,7 +43,7 @@ struct QuotaPopover: View {
             ScrollView {
                 VStack(spacing: 8) {
                     if model.isRefreshing { ProgressView("Refreshing quotas…").font(.caption).padding(4) }
-                    if let error = model.serverError { Text(error).font(.caption).foregroundStyle(Palette.warning) }
+                    if let error = model.serverError { Text(error).font(.caption).foregroundStyle(Theme.warning) }
                     if model.viewLayout == .summary {
                         ForEach(model.sections.sorted { !$0.windows.isEmpty && $1.windows.isEmpty }, id: \.providerKey) { section in
                             CompactPopoverPlatformRow(
@@ -65,7 +65,7 @@ struct QuotaPopover: View {
                         }
                     }
                 }.padding(10)
-            }.background(Palette.background)
+            }.background(Theme.background)
             Divider()
             HStack {
                 Button("Open Monitor", action: openMonitor).buttonStyle(.borderedProminent)
@@ -88,7 +88,7 @@ struct QuotaPopover: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.system(size: 15))
-                        .foregroundStyle(Palette.ink)
+                        .foregroundStyle(Theme.ink)
                 }
                 .menuIndicator(.hidden)
                 .menuStyle(.borderlessButton)
@@ -96,7 +96,7 @@ struct QuotaPopover: View {
             }.padding(12)
         }
         .frame(width: 410, height: 600)
-        .tint(Palette.accent).preferredColorScheme(.light)
+        .tint(Theme.accent)
     }
 }
 
@@ -159,8 +159,8 @@ struct CompactPopoverPlatformRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.black.opacity(0.06)))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline))
     }
 }
 
@@ -200,7 +200,7 @@ struct CompactPopoverQuotaPill: View {
 
             if let pct = snapshot.remainingPercent {
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.black.opacity(0.08))
+                    Capsule().fill(Theme.track)
                     Capsule().fill(color).frame(width: 44 * CGFloat(min(max(pct, 0), 100)) / 100)
                 }
                 .frame(width: 44, height: 3)
