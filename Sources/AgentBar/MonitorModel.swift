@@ -157,6 +157,9 @@ final class MonitorModel: ObservableObject {
     @Published private(set) var hasSavedSyncToken: Bool
     @Published private(set) var lastSyncTime: Date?
     @Published private(set) var lastSyncStatus: String?
+    /// The last push failure, kept separately from `lastSyncStatus` so Settings
+    /// can show it under the group that owns it.
+    @Published private(set) var lastSyncError: String?
     @Published private(set) var isSyncing = false
     @Published private(set) var lastPullTime: Date?
 
@@ -397,8 +400,8 @@ final class MonitorModel: ObservableObject {
         guard let url = URL(string: value), QuotaClient.isAllowedEndpoint(url) else {
             return (false, "Invalid endpoint URL." + sentenceGap + "Use HTTPS, or HTTP for localhost only.")
         }
-        let cleanToken = inputToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: value, service: TokenStore.readService)
+        let cleanToken = sanitizedToken(inputToken)
+        let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: value, service: TokenStore.readService).map(sanitizedToken(_:))
         guard let token = resolvedToken, !token.isEmpty else {
             return (false, "Please provide a valid Read Token.")
         }
@@ -416,7 +419,7 @@ final class MonitorModel: ObservableObject {
     func saveConnection(local: Bool, server: Bool, endpoint input: String, token: String) async throws {
         let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: value), QuotaClient.isAllowedEndpoint(url) else { throw QuotaClientError.invalidEndpoint }
-        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanToken = sanitizedToken(token)
         if !cleanToken.isEmpty {
             guard !cleanToken.contains("\n"), !cleanToken.contains("\r") else { throw QuotaClientError.invalidToken }
             try await TokenStore.save(cleanToken, server: value, service: TokenStore.readService)
@@ -459,7 +462,7 @@ final class MonitorModel: ObservableObject {
         guard let url = URL(string: value), QuotaClient.isAllowedEndpoint(url) else {
             throw QuotaPublisherError.invalidEndpoint
         }
-        let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanToken = sanitizedToken(token)
         if !cleanToken.isEmpty {
             try await TokenStore.save(cleanToken, server: value, service: TokenStore.syncService)
         }
@@ -498,8 +501,8 @@ final class MonitorModel: ObservableObject {
         guard !windowsToPush.isEmpty else {
             return (false, "No local agent quotas available to push.")
         }
-        let cleanToken = inputToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: targetEndpoint, service: TokenStore.syncService)
+        let cleanToken = sanitizedToken(inputToken)
+        let resolvedToken = !cleanToken.isEmpty ? cleanToken : await TokenStore.read(server: targetEndpoint, service: TokenStore.syncService).map(sanitizedToken(_:))
         guard let token = resolvedToken, !token.isEmpty else {
             return (false, "Please provide a valid Ingest Token.")
         }
@@ -513,10 +516,12 @@ final class MonitorModel: ObservableObject {
             )
             self.lastSyncTime = Date()
             self.lastSyncStatus = result.message
+            self.lastSyncError = nil
             return (true, result.message)
         } catch {
             let errorDesc = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             self.lastSyncStatus = "Error: \(errorDesc)"
+            self.lastSyncError = errorDesc
             return (false, errorDesc)
         }
     }
@@ -525,13 +530,16 @@ final class MonitorModel: ObservableObject {
         guard syncEnabled, let url = URL(string: syncEndpoint), QuotaClient.isAllowedEndpoint(url), !windows.isEmpty else { return }
         isSyncing = true
         defer { isSyncing = false }
-        let token = await TokenStore.read(server: syncEndpoint, service: TokenStore.syncService)
+        let token = await TokenStore.read(server: syncEndpoint, service: TokenStore.syncService).map(sanitizedToken(_:))
         do {
             let result = try await publisher.publish(windows: windows, to: url, token: token, format: syncFormat)
             self.lastSyncTime = Date()
             self.lastSyncStatus = result.message
+            self.lastSyncError = nil
         } catch {
-            self.lastSyncStatus = "Error: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            self.lastSyncStatus = "Error: \(message)"
+            self.lastSyncError = message
         }
     }
 
@@ -550,13 +558,17 @@ final class MonitorModel: ObservableObject {
             var failure: String?
             if useServer {
                 let token = await TokenStore.read(server: currentEndpoint, service: TokenStore.readService)
+                    .map(sanitizedToken(_:))
                 do {
                     guard let url = URL(string: currentEndpoint) else { throw QuotaClientError.invalidEndpoint }
                     guard let token else { throw TokenStore.Failure.read }
                     let client = try QuotaClient(endpoint: url, token: token)
                     newServer = try await client.fetch()
                 } catch is CancellationError { return }
-                catch { failure = (error as? LocalizedError)?.errorDescription ?? "Unable to reach the server." }
+                catch {
+                    failure = (error as? LocalizedError)?.errorDescription
+                        ?? ("Unable to reach the server." + sentenceGap + "Check the Quota Endpoint and the Read Token.")
+                }
             }
             let local = await localRead
             guard !Task.isCancelled, let self, self.revision == generation else { return }

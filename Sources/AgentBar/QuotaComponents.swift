@@ -65,10 +65,6 @@ enum Metrics {
     }
 }
 
-/// Two sentences in one UI string are separated by this, never by a bare space.
-/// A no-break space plus a space survives every renderer AppKit hands it.
-let sentenceGap = "\u{00A0} "
-
 // MARK: - Shared status rules
 
 /// The 20% threshold lives here and nowhere else.

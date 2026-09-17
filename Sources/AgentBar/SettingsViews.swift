@@ -315,13 +315,24 @@ struct SettingsSourcesFleetPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         } header: {
-            HStack {
-                Eyebrow("SHARE THIS MAC")
-                Spacer()
-                Text(model.lastSyncTime.map { "Pushed \($0.formatted(date: .omitted, time: .shortened))" } ?? "Never pushed")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .textCase(nil)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Eyebrow("SHARE THIS MAC")
+                    Spacer()
+                    Text(model.lastSyncTime.map { "Pushed \($0.formatted(date: .omitted, time: .shortened))" } ?? "Never pushed")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                }
+                // The last push failure lives with the group that owns it, so a
+                // token the server rejects is visible without pressing anything.
+                if let pushError = model.lastSyncError {
+                    Text("Last push failed." + sentenceGap + pushError)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.danger)
+                        .textCase(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         } footer: {
             Text("You can also set the USAGE_INGEST_TOKEN environment variable instead of saving a token here.")
@@ -410,6 +421,7 @@ struct SettingsSourcesFleetPage: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         } header: {
+            VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Eyebrow("PULL THE FLEET")
                 Spacer()
@@ -429,6 +441,14 @@ struct SettingsSourcesFleetPage: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .textCase(nil)
+            }
+                if let pullError = model.serverError {
+                    Text("Last pull failed." + sentenceGap + pullError)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Theme.danger)
+                        .textCase(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         } footer: {
             Text("Refreshes every 5 minutes while AgentBar is running.")

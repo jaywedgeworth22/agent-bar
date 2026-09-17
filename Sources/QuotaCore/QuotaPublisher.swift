@@ -42,7 +42,7 @@ public enum QuotaPublisherError: Error, Equatable, Sendable, LocalizedError {
         case .emptyWindows:
             return "No quota windows to publish."
         case .unauthorized:
-            return "Unauthorized (HTTP 401). Check your Ingest Token."
+            return "Unauthorized (HTTP 401)." + sentenceGap + "Check your Ingest Token."
         case let .httpStatus(status, detail):
             if let detail, !detail.isEmpty {
                 return "Server returned HTTP \(status): \(detail)"
@@ -117,7 +117,7 @@ public actor QuotaPublisher {
         request.setValue("2", forHTTPHeaderField: "x-usage-telemetry-version")
         request.setValue("agent-bar/1.0", forHTTPHeaderField: "User-Agent")
 
-        if let token = token?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty {
+        if let token = token.map(sanitizedToken(_:)), !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.setValue(token, forHTTPHeaderField: "x-usage-ingest-token")
         }
