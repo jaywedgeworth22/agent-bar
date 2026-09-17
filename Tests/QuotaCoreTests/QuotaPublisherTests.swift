@@ -177,7 +177,7 @@ final class QuotaPublisherTests: XCTestCase {
 
         let publisher = QuotaPublisher(urlProtocolClasses: [MockSyncProtocol.self])
         let windows = makeSampleWindows()
-        let url = URL(string: "https://usage.jays.services/api/ingest/usage")!
+        let url = URL(string: "https://usage.example.com/api/ingest/usage")!
 
         let result = try await publisher.publish(windows: windows, to: url, token: "test-ingest-token")
         XCTAssertEqual(result.statusCode, 200)
@@ -193,7 +193,7 @@ final class QuotaPublisherTests: XCTestCase {
 
         let publisher = QuotaPublisher(urlProtocolClasses: [MockSyncProtocol.self])
         let windows = makeSampleWindows()
-        let url = URL(string: "https://usage.jays.services/api/ingest/usage")!
+        let url = URL(string: "https://usage.example.com/api/ingest/usage")!
 
         do {
             _ = try await publisher.publish(windows: windows, to: url, token: "bad-token")

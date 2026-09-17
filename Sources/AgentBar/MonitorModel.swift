@@ -172,16 +172,6 @@ final class MonitorModel: ObservableObject {
         syncEnabled = defaults.bool(forKey: "syncEnabled")
         hasSavedSyncToken = defaults.bool(forKey: "hasSavedSyncToken")
 
-        // Both endpoints now default to empty, so a fresh install never posts to
-        // anyone else's server.  An install that predates this change has no
-        // stored endpoint but does have a saved token, so the old default is
-        // written forward once and that install keeps working unchanged.
-        if defaults.string(forKey: "endpoint") == nil, defaults.bool(forKey: "hasSavedToken") {
-            defaults.set(Self.legacyPullEndpoint, forKey: "endpoint")
-        }
-        if defaults.string(forKey: "syncEndpoint") == nil, defaults.bool(forKey: "hasSavedSyncToken") {
-            defaults.set(Self.legacySyncEndpoint, forKey: "syncEndpoint")
-        }
         endpoint = defaults.string(forKey: "endpoint") ?? ""
         syncEndpoint = defaults.string(forKey: "syncEndpoint") ?? ""
         syncFormat = QuotaSyncFormat(rawValue: defaults.string(forKey: "syncFormat") ?? "") ?? .usageMonitorV2
@@ -189,11 +179,6 @@ final class MonitorModel: ObservableObject {
         appearance = AppAppearance(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .light
         keepConsoleInFront = defaults.bool(forKey: "consoleKeepInFront")
     }
-
-    /// The endpoints AgentBar shipped with before the defaults became empty.
-    /// Referenced only by the one-time migration in `init`.
-    private static let legacyPullEndpoint = "https://usage.jays.services/api/quota-windows"
-    private static let legacySyncEndpoint = "https://usage.jays.services/api/ingest/usage"
 
     var sections: [QuotaPlatformSection] {
         let base = response.platformSections(now: now)
