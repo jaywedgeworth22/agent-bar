@@ -155,13 +155,17 @@ cd agent-bar
 script/build_and_run.sh            # build, install to ~/Applications, and relaunch
 ```
 
-Other modes: `--install` (same, no relaunch); `--dev` (separate `.dev` identifier into `dist/`, launched beside the installed copy; `--dev-stop` quits it and removes `dist/`); `--package` (Release, zipped into `dist/` with a SHA-256 file); `--build-only` (stage `dist/AgentBar.app` only).
+Other modes: `--install` (same, no relaunch); `--dev` (separate `.dev` identifier into `dist/`, launched beside the installed copy; `--dev-stop` quits it and removes `dist/`); `--package` (universal Release, zipped into `dist/` with a SHA-256 file); `--release` (`--package`, then notarize and staple the app, and build, sign, notarize and staple `dist/AgentBar.dmg`); `--build-only` (stage `dist/AgentBar.app` only).
+
+`--package` and `--release` build one universal binary for Apple silicon and Intel, verified with `lipo -archs`.  `CFBundleShortVersionString` comes from the `VERSION` file at the repo root, so cutting a release is one edit, and `CFBundleVersion` is the commit count.  `--release` notarizes through the keychain profile named by `AGENTBAR_NOTARY_PROFILE` (default `agentbar-notary`), which you create once with `xcrun notarytool store-credentials`.
 
 `run` and `--install` keep exactly one installed copy, at `~/Applications/AgentBar.app`: any other bundle with the same release identifier, in the usual install locations or this checkout's `dist/`, is Trashed and printed.  `AGENTBAR_PRUNE_DRY_RUN=1` previews without moving anything; `AGENTBAR_BUNDLE_ID` builds under a distinct identifier, for more than one checkout.
 
 **Signing** is still evolving — take this as current-best, not a fixed contract.  The script signs with a Developer ID Application identity when available (`AGENTBAR_CODESIGN_IDENTITY`, or the first one already in your keychains), falling back to ad-hoc (`codesign --sign -`) if none is found or signing times out.  This matters beyond Gatekeeper: a stable identity keeps saved tokens (Sources & Fleet) readable across rebuilds; ad-hoc, every build gets a new identity, so a saved token needs Re-Authorize Saved Token afterward.
 
-**Gatekeeper.**  Without a stable identity — always true for `--dev` — macOS blocks the first launch; right-click and choose Open, or `xattr -d com.apple.quarantine`.  `--package` also signs for notarization and prints, but does not run, the `notarytool`/`stapler` commands.
+**Gatekeeper.**  Without a stable identity — always true for `--dev` — macOS blocks the first launch; right-click and choose Open, or `xattr -d com.apple.quarantine`.  `--package` signs for notarization but stops there; `--release` is the mode that actually submits to Apple and staples the ticket, which is how the published dmg opens with no warning at all.
+
+**Icon.**  The master in `assets/` is a full-bleed square, and stays that way.  macOS before 26 does not mask an app icon, so `script/make_icon.swift` derives the macOS shape at build time — the master drawn inside an 824x824 rounded rectangle on a 1024 canvas, with the standard drop shadow — and the `.icns` is built from that.  The master files are only ever read.
 
 ## Settings
 

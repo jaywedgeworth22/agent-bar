@@ -18,10 +18,21 @@ APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_EXECUTABLE="$APP_MACOS/$PRODUCT_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
-ICON_SOURCE="$ROOT_DIR/assets/icon-512.png"
+ICON_MASTER="$ROOT_DIR/assets/icon-1024.png"
+ICON_FALLBACK="$ROOT_DIR/assets/icon-512.png"
+ICON_MAKER="$ROOT_DIR/script/make_icon.swift"
 ICON_FILE="AppIcon.icns"
 INSTALL_DIR="$HOME/Applications"
 INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
+VERSION_FILE="$ROOT_DIR/VERSION"
+ZIP_FILE="$DIST_DIR/$APP_NAME.zip"
+DMG_FILE="$DIST_DIR/$APP_NAME.dmg"
+NOTARY_PROFILE="${AGENTBAR_NOTARY_PROFILE:-agentbar-notary}"
+# Release artifacts are universal.  A build that only runs on the machine that
+# made it is not a release, and an Intel Mac has no Rosetta for arm64 code.
+UNIVERSAL_ARCHS=(arm64 x86_64)
+UNIVERSAL=0
+KEEP_STAGED_APP=0
 
 # Where a stray copy of the app tends to end up.  Only these are searched, so a
 # bundle inside another checkout is never a candidate for pruning.
@@ -44,8 +55,13 @@ usage: script/build_and_run.sh [mode]
   --dev          build with the .dev bundle identifier into dist/ and launch it
                  beside the installed app, leaving the installed copy alone
   --dev-stop     quit only this checkout's dev process and delete dist/
-  --package      build Release, zip it into dist/ with its SHA-256, and remove
-                 the staged .app afterwards
+  --package      build a universal Release, zip it into dist/ with its SHA-256,
+                 and remove the staged .app afterwards
+  --release      --package, then notarize and staple the app, rebuild the zip
+                 from the stapled bundle, and build, sign, notarize and staple
+                 dist/AgentBar.dmg.  Both artifacts get a .sha256 beside them.
+                 Notarization uses the keychain profile named by
+                 $AGENTBAR_NOTARY_PROFILE, default "agentbar-notary"
   --build-only   stage dist/AgentBar.app and stop
   --debug        stage and run under lldb
   --logs         stage, launch, and stream the process log
@@ -66,7 +82,11 @@ usage: script/build_and_run.sh [mode]
   and Ingest Token survive a rebuild — ad-hoc gives every build a different
   code identity, so the Keychain stops trusting the new one.  --package also
   signs with the hardened runtime and a secure timestamp and prints the
-  notarytool command; notarizing itself is a separate step.
+  notarytool command; --release is the mode that actually notarizes.
+
+  Versions: CFBundleShortVersionString is the VERSION file at the repo root, so
+  cutting a release is one edit.  CFBundleVersion is `git rev-list --count
+  HEAD`, which only ever goes up.
 USAGE
 }
 
@@ -180,14 +200,80 @@ sign_app_bundle() {
   describe_signature
 }
 
+# The marketing version lives in one file so a release is a one-line edit, and
+# the build number is the commit count so it is monotonic without bookkeeping.
+short_version() {
+  local version=""
+  [[ ! -f "$VERSION_FILE" ]] || version="$(/usr/bin/sed -e 's/[[:space:]]//g' -e '/^$/d' "$VERSION_FILE" | /usr/bin/head -n 1)"
+  printf '%s\n' "${version:-0.0.0}"
+}
+
+bundle_version() {
+  local count=""
+  count="$(/usr/bin/git -C "$ROOT_DIR" rev-list --count HEAD 2>/dev/null || true)"
+  printf '%s\n' "${count:-1}"
+}
+
 bundle_identifier() {
   /usr/bin/plutil -extract CFBundleIdentifier raw -o - "$1/Contents/Info.plist" 2>/dev/null || true
 }
 
+# macOS before 26 draws an app icon exactly as given, so a full-bleed square
+# master looks like a sticker in the Dock.  The master stays square — that is
+# the fleet rule and every other surface wants it — and the macOS shape is
+# derived here, at build time, into a throwaway file.
+stage_icon() {
+  local master="$ICON_MASTER"
+  [[ -f "$master" ]] || master="$ICON_FALLBACK"
+  [[ -f "$master" ]] || { echo "warning: no icon master found, shipping without an icon" >&2; return 0; }
+
+  local workdir shaped
+  workdir="$(mktemp -d "${TMPDIR:-/tmp}/agentbar-icon.XXXXXX")"
+  shaped="$workdir/shaped.png"
+  if [[ -f "$ICON_MAKER" ]] && swift "$ICON_MAKER" "$master" "$shaped" >/dev/null 2>&1; then
+    echo "icon: derived the macOS icon shape from $(basename "$master")"
+  else
+    echo "warning: could not derive the macOS icon shape; using the square master as-is" >&2
+    shaped="$master"
+  fi
+
+  if command -v sips >/dev/null 2>&1 && command -v iconutil >/dev/null 2>&1; then
+    local iconset="$workdir/AppIcon.iconset"
+    mkdir -p "$iconset"
+    local spec size name
+    for spec in "16:icon_16x16" "32:icon_16x16@2x" "32:icon_32x32" "64:icon_32x32@2x" \
+                "128:icon_128x128" "256:icon_128x128@2x" "256:icon_256x256" \
+                "512:icon_256x256@2x" "512:icon_512x512" "1024:icon_512x512@2x"; do
+      size="${spec%%:*}"
+      name="${spec#*:}"
+      sips -z "$size" "$size" "$shaped" --out "$iconset/$name.png" >/dev/null
+    done
+    iconutil -c icns "$iconset" -o "$APP_RESOURCES/AppIcon.icns"
+    ICON_FILE="AppIcon.icns"
+  else
+    cp "$shaped" "$APP_RESOURCES/AppIcon.png"
+    ICON_FILE="AppIcon.png"
+  fi
+  rm -rf "$workdir"
+}
+
 build_and_stage() {
-  swift build --package-path "$PACKAGE_DIR" --configuration "$CONFIGURATION" --jobs 2
+  local arch_flags=()
+  if [[ "$UNIVERSAL" == "1" ]]; then
+    local arch
+    for arch in "${UNIVERSAL_ARCHS[@]}"; do arch_flags+=(--arch "$arch"); done
+    if ! swift build --package-path "$PACKAGE_DIR" --configuration "$CONFIGURATION" --jobs 2 "${arch_flags[@]}"; then
+      echo "warning: the universal build failed; falling back to this machine's architecture only." >&2
+      echo "warning: the resulting artifact will not run on every supported Mac." >&2
+      UNIVERSAL=0
+      arch_flags=()
+    fi
+  fi
+  if [[ "$UNIVERSAL" != "1" ]]; then
+    swift build --package-path "$PACKAGE_DIR" --configuration "$CONFIGURATION" --jobs 2
+  fi
   local build_bin_dir build_binary build_resources
-  build_bin_dir="$(swift build --package-path "$PACKAGE_DIR" --configuration "$CONFIGURATION" --show-bin-path)"
+  build_bin_dir="$(swift build --package-path "$PACKAGE_DIR" --configuration "$CONFIGURATION" ${arch_flags[@]+"${arch_flags[@]}"} --show-bin-path)"
   build_binary="$build_bin_dir/$PRODUCT_NAME"
   [[ -x "$build_binary" ]] || { echo "built executable not found: $build_binary" >&2; exit 1; }
 
@@ -197,32 +283,20 @@ build_and_stage() {
   mkdir -p "$APP_MACOS" "$APP_RESOURCES"
   cp "$build_binary" "$APP_EXECUTABLE"
   chmod +x "$APP_EXECUTABLE"
+  if [[ "$UNIVERSAL" == "1" ]]; then
+    local archs
+    archs="$(/usr/bin/lipo -archs "$APP_EXECUTABLE" 2>/dev/null || true)"
+    echo "architectures: $archs"
+    local wanted
+    for wanted in "${UNIVERSAL_ARCHS[@]}"; do
+      [[ " $archs " == *" $wanted "* ]] || { echo "universal build is missing $wanted: $archs" >&2; exit 1; }
+    done
+  fi
   build_resources="$(find "$build_bin_dir" -maxdepth 1 -type d \( -name "*_"$PRODUCT_NAME.bundle -o -name "*_"$PRODUCT_NAME.resources \) -print -quit)"
   if [[ -n "$build_resources" ]]; then
     cp -R "$build_resources" "$APP_RESOURCES/"
   fi
-  if [[ -f "$ICON_SOURCE" && -x "$(command -v sips 2>/dev/null || true)" && -x "$(command -v iconutil 2>/dev/null || true)" ]]; then
-    local iconset
-    iconset="$(mktemp -d "${TMPDIR:-/tmp}/agentbar-icon.XXXXXX").iconset"
-    mkdir -p "$iconset"
-    trap 'rm -rf "$iconset"' RETURN
-    sips -z 16 16 "$ICON_SOURCE" --out "$iconset/icon_16x16.png" >/dev/null
-    sips -z 32 32 "$ICON_SOURCE" --out "$iconset/icon_16x16@2x.png" >/dev/null
-    sips -z 32 32 "$ICON_SOURCE" --out "$iconset/icon_32x32.png" >/dev/null
-    sips -z 64 64 "$ICON_SOURCE" --out "$iconset/icon_32x32@2x.png" >/dev/null
-    sips -z 128 128 "$ICON_SOURCE" --out "$iconset/icon_128x128.png" >/dev/null
-    sips -z 256 256 "$ICON_SOURCE" --out "$iconset/icon_128x128@2x.png" >/dev/null
-    sips -z 256 256 "$ICON_SOURCE" --out "$iconset/icon_256x256.png" >/dev/null
-    sips -z 512 512 "$ICON_SOURCE" --out "$iconset/icon_256x256@2x.png" >/dev/null
-    sips -z 512 512 "$ICON_SOURCE" --out "$iconset/icon_512x512.png" >/dev/null
-    sips -z 1024 1024 "$ICON_SOURCE" --out "$iconset/icon_512x512@2x.png" >/dev/null
-    iconutil -c icns "$iconset" -o "$APP_RESOURCES/AppIcon.icns"
-    rm -rf "$iconset"
-    trap - RETURN
-  elif [[ -f "$ICON_SOURCE" ]]; then
-    cp "$ICON_SOURCE" "$APP_RESOURCES/AppIcon.png"
-    ICON_FILE="AppIcon.png"
-  fi
+  stage_icon
 
   /usr/bin/tee "$INFO_PLIST" >/dev/null <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -236,9 +310,9 @@ build_and_stage() {
   <key>CFBundleIconFile</key>
   <string>$ICON_FILE</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
+  <string>$(short_version)</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$(bundle_version)</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
   <key>CFBundleName</key>
@@ -325,25 +399,116 @@ prune_other_copies() {
 
 package_dist() {
   CONFIGURATION="release"
-  # A distributed build needs the hardened runtime and a secure
-  # timestamp, or notarization rejects it.  Notarizing is a separate
-  # step; the command is printed below rather than run here.
+  UNIVERSAL=1
+  # A distributed build needs the hardened runtime and a secure timestamp, or
+  # notarization rejects it.  --package stops here; --release goes on to
+  # notarize what this produced.
   SIGN_OPTIONS=(--options runtime --timestamp)
   build_and_stage
-  local zip_file="$DIST_DIR/$APP_NAME.zip"
-  rm -f "$zip_file"
-  (cd "$DIST_DIR" && zip -q -r -y "$APP_NAME.zip" "$APP_NAME.app")
-  local sha
-  sha="$(shasum -a 256 "$zip_file" | awk '{print $1}')"
-  echo "$sha  $APP_NAME.zip" > "$DIST_DIR/$APP_NAME.zip.sha256"
-  # The zip is the artifact; leaving the staged bundle behind is how a second
-  # copy of the app ends up on disk in the first place.
-  rm -rf "$APP_BUNDLE"
-  echo "Packaged: $zip_file"
-  echo "SHA-256:  $sha"
-  echo "Notarize with:"
-  echo "  xcrun notarytool submit \"$zip_file\" --keychain-profile AC_PASSWORD --wait"
-  echo "  xcrun stapler staple \"$APP_NAME.app\"   # after unzipping where it will live"
+  write_zip
+  echo "Packaged: $ZIP_FILE"
+  echo "SHA-256:  $(sha_of "$ZIP_FILE")"
+  if [[ "$KEEP_STAGED_APP" != "1" ]]; then
+    # The zip is the artifact; leaving the staged bundle behind is how a second
+    # copy of the app ends up on disk in the first place.
+    rm -rf "$APP_BUNDLE"
+    echo "Notarize and staple with:"
+    echo "  script/build_and_run.sh --release"
+  fi
+}
+
+sha_of() {
+  /usr/bin/shasum -a 256 "$1" | /usr/bin/awk '{print $1}'
+}
+
+write_sha_file() {
+  local file="$1" sha
+  sha="$(sha_of "$file")"
+  echo "$sha  $(basename "$file")" > "$file.sha256"
+  echo "$sha"
+}
+
+# ditto is what Apple's own notarization documentation uses.  It keeps the
+# bundle's symlinks and extended attributes, which a plain zip does not, and a
+# mangled bundle is rejected before it is even examined.
+write_zip() {
+  rm -f "$ZIP_FILE"
+  /usr/bin/ditto -c -k --keepParent "$APP_BUNDLE" "$ZIP_FILE"
+  write_sha_file "$ZIP_FILE" >/dev/null
+}
+
+# Submits one file and refuses to continue unless Apple accepted it.  A
+# rejection is printed in full, because the log is the only thing that says
+# which of the hundred notarization rules was broken.
+notarize_file() {
+  local file="$1"
+  local response submission status
+  echo "Submitting $(basename "$file") to Apple for notarization.  This takes a few minutes."
+  if ! response="$(xcrun notarytool submit "$file" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json 2>/dev/null)"; then
+    echo "notarization could not be submitted for $(basename "$file")." >&2
+    echo "check that the keychain profile '$NOTARY_PROFILE' exists (xcrun notarytool store-credentials)." >&2
+    exit 1
+  fi
+  submission="$(printf '%s' "$response" | /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin).get("id",""))')"
+  status="$(printf '%s' "$response" | /usr/bin/python3 -c 'import json,sys; print(json.load(sys.stdin).get("status",""))')"
+  echo "notarization id:     $submission"
+  echo "notarization status: $status"
+  if [[ "$status" != "Accepted" ]]; then
+    echo "notarization was not accepted for $(basename "$file").  Apple's log follows." >&2
+    xcrun notarytool log "$submission" --keychain-profile "$NOTARY_PROFILE" >&2 2>/dev/null || true
+    exit 1
+  fi
+}
+
+# A dmg is what a person who is handed a link expects to double-click, and the
+# Applications symlink beside the app is the drag-to-install gesture everyone
+# already knows.
+build_dmg() {
+  local staging="$DIST_DIR/dmg-staging"
+  rm -rf "$staging"
+  mkdir -p "$staging"
+  cp -R "$APP_BUNDLE" "$staging/$APP_NAME.app"
+  ln -s /Applications "$staging/Applications"
+  rm -f "$DMG_FILE"
+  /usr/bin/hdiutil create -volname "$APP_NAME" -srcfolder "$staging" -ov -format UDZO "$DMG_FILE"
+  rm -rf "$staging"
+
+  local identity
+  identity="$(resolve_codesign_identity)"
+  if [[ -n "$identity" ]]; then
+    codesign_bounded --force --timestamp --sign "$identity" "$DMG_FILE"
+    echo "signed $DMG_FILE with $identity"
+  else
+    echo "no Developer ID Application identity is available to sign the disk image." >&2
+    exit 1
+  fi
+}
+
+release_dist() {
+  KEEP_STAGED_APP=1
+  package_dist
+
+  notarize_file "$ZIP_FILE"
+  # Stapling writes Apple's ticket into the bundle, which is what lets a Mac
+  # that is offline, or behind a firewall, still open it without a warning.
+  /usr/bin/xcrun stapler staple "$APP_BUNDLE"
+  # The zip that was submitted holds the unstapled bundle, so it is rebuilt
+  # from the stapled one.  Whoever downloads the zip gets the ticket too.
+  write_zip
+
+  build_dmg
+  notarize_file "$DMG_FILE"
+  /usr/bin/xcrun stapler staple "$DMG_FILE"
+
+  local zip_sha dmg_sha
+  zip_sha="$(write_sha_file "$ZIP_FILE")"
+  dmg_sha="$(write_sha_file "$DMG_FILE")"
+
+  echo
+  echo "Release artifacts in $DIST_DIR"
+  echo "  $APP_NAME.zip  $zip_sha"
+  echo "  $APP_NAME.dmg  $dmg_sha"
+  echo "  version $(short_version) (build $(bundle_version))"
 }
 
 case "$MODE" in
@@ -378,6 +543,9 @@ case "$MODE" in
     ;;
   --package|package)
     package_dist
+    ;;
+  --release|release)
+    release_dist
     ;;
   --debug|debug)
     kill_owned_app
