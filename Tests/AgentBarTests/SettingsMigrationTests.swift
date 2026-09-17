@@ -1,17 +1,13 @@
 import XCTest
 @testable import AgentBar
 
-/// The endpoint defaults are empty so a fresh install never posts to anyone
-/// else's server, and an install that predates that change keeps working.  That
-/// is one-shot, upgrade-only logic, which is exactly the kind that rots
-/// unnoticed — so each of its three cases is pinned here.
+/// The pull and sync endpoints default to empty strings, and both features
+/// default to disabled, so a fresh install never posts to anyone else's
+/// server until the owner configures one explicitly.
 @MainActor
 final class SettingsMigrationTests: XCTestCase {
     private var suiteName = ""
     private var defaults: UserDefaults!
-
-    private static let legacyPull = "https://usage.jays.services/api/quota-windows"
-    private static let legacySync = "https://usage.jays.services/api/ingest/usage"
 
     override func setUp() {
         super.setUp()
@@ -33,15 +29,14 @@ final class SettingsMigrationTests: XCTestCase {
         XCTAssertNil(defaults.string(forKey: "syncEndpoint"))
     }
 
-    func testUpgradedInstallWithASavedTokenKeepsItsOldEndpoint() {
-        defaults.set(true, forKey: "hasSavedToken")
-        defaults.set(true, forKey: "hasSavedSyncToken")
+    /// With no UserDefaults keys ever set, both endpoints are empty strings
+    /// and both the pull (server) and sync features start disabled.
+    func testAFreshDomainHasEmptyEndpointsAndBothFeaturesDisabled() {
         let model = MonitorModel(defaults: defaults)
-        XCTAssertEqual(model.endpoint, Self.legacyPull)
-        XCTAssertEqual(model.syncEndpoint, Self.legacySync)
-        // Written forward, not merely defaulted in memory.
-        XCTAssertEqual(defaults.string(forKey: "endpoint"), Self.legacyPull)
-        XCTAssertEqual(defaults.string(forKey: "syncEndpoint"), Self.legacySync)
+        XCTAssertEqual(model.endpoint, "")
+        XCTAssertEqual(model.syncEndpoint, "")
+        XCTAssertFalse(model.serverEnabled)
+        XCTAssertFalse(model.syncEnabled)
     }
 
     func testAStoredEndpointIsNeverClobbered() {
