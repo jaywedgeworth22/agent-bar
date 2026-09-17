@@ -16,5 +16,6 @@ let package = Package(
             resources: [.process("Resources")]
         ),
         .testTarget(name: "QuotaCoreTests", dependencies: ["QuotaCore"]),
+        .testTarget(name: "AgentBarTests", dependencies: ["AgentBar"]),
     ]
 )
