@@ -5,21 +5,30 @@ import SwiftUI
 ///
 /// The provider key is the canonical key used by QuotaCore.  Unknown keys
 /// deliberately use a neutral SF Symbol instead of guessing at a brand.
+///
+/// Marks are template images: only their silhouette is used, and the colour
+/// comes from the label, so one asset is legible on a light and a dark surface.
 public struct PlatformLogo: View {
     public let providerKey: String
     public let size: CGFloat
+    /// The colour the mark is drawn in.  Nil takes the label colour, which is
+    /// what makes a mark black in Light and white in Dark.
+    public let tint: Color?
 
-    public init(providerKey: String, size: CGFloat = 22) {
+    public init(providerKey: String, size: CGFloat = 22, tint: Color? = nil) {
         self.providerKey = providerKey
         self.size = size
+        self.tint = tint
     }
 
     public var body: some View {
         Group {
             if let image = PlatformLogoImage.load(providerKey: providerKey) {
                 Image(nsImage: image)
+                    .renderingMode(.template)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .foregroundStyle(tint ?? Theme.ink)
             } else {
                 Image(systemName: "questionmark.circle")
                     .resizable()
@@ -41,15 +50,15 @@ public enum PlatformLogoImage {
         "claude": ("claude", "svg"),
         "openai": ("openai", "svg"),
         "codex": ("openai", "svg"),
-        "google-antigravity": ("gemini", "png"),
-        "antigravity": ("gemini", "png"),
-        "gemini": ("gemini", "png"),
+        "google-antigravity": ("gemini", "svg"),
+        "antigravity": ("gemini", "svg"),
+        "gemini": ("gemini", "svg"),
         "xai": ("grok", "svg"),
         "grok": ("grok", "svg"),
         "grok-cli": ("grok", "svg"),
         "grok-bot": ("grok", "svg"),
         "minimax": ("minimax", "svg"),
-        "cursor": ("cursor", "png"),
+        "cursor": ("cursor", "svg"),
     ]
 
     public static func load(providerKey: String) -> NSImage? {
@@ -65,7 +74,10 @@ public enum PlatformLogoImage {
             return nil
         }
         if cache.object(forKey: key as NSString) == nil {
-            cached.isTemplate = false
+            // Every mark is drawn as a template, so it takes the label colour
+            // and reads correctly in both Light and Dark rather than keeping a
+            // brand colour that disappears against one of them.
+            cached.isTemplate = true
             cache.setObject(cached, forKey: key as NSString)
         }
         return cached
