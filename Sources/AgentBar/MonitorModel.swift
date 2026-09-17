@@ -35,7 +35,7 @@ public enum QuotaViewLayout: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .summary: return "Summary"
+        case .summary: return "Compact"
         case .detailed: return "Detailed"
         }
     }
@@ -196,8 +196,8 @@ final class MonitorModel: ObservableObject {
     /// All individual quotas available for pinning to the menu bar.
     var availableMenuBarQuotas: [(id: String, label: String)] {
         var result: [(id: String, label: String)] = [
-            (id: "auto_lowest_active", label: "Lowest Active (> 0%)"),
-            (id: "auto_lowest", label: "Lowest (All)"),
+            (id: "auto_lowest_active", label: "Lowest active quota"),
+            (id: "auto_lowest", label: "Lowest quota"),
         ]
         for section in sections {
             let windows = section.windows.filter { $0.isFresh && $0.remainingPercent != nil && !$0.window.isSupplementaryVideoQuota }

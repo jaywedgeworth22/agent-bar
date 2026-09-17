@@ -44,12 +44,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         model.$displayMode.removeDuplicates().sink { [weak self] mode in
             self?.apply(mode)
         }.store(in: &subscriptions)
-        model.$appearance.removeDuplicates().sink { appearance in
-            switch appearance {
-            case .light: NSApp.appearance = NSAppearance(named: .aqua)
-            case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
-            case .system: NSApp.appearance = nil
+        model.$appearance.removeDuplicates().sink { [weak self] appearance in
+            let resolved: NSAppearance? = switch appearance {
+            case .light: NSAppearance(named: .aqua)
+            case .dark: NSAppearance(named: .darkAqua)
+            case .system: nil
             }
+            NSApp.appearance = resolved
+            // The popover keeps its own appearance and does not follow NSApp,
+            // so Dark has to be handed to it directly.
+            self?.popover.appearance = resolved
         }.store(in: &subscriptions)
         model.$keepConsoleInFront.removeDuplicates().sink { [weak self] pinned in
             self?.consoleWindow?.level = pinned ? .floating : .normal
@@ -200,7 +204,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             window.isReleasedWhenClosed = false
             window.isRestorable = false
             window.delegate = self
-            window.contentView = NSHostingView(rootView: ConsoleView(model: model, state: consoleState))
+            // A hosting CONTROLLER, not a bare hosting view: the controller
+            // respects the titlebar's safe area, so scrolled content does not
+            // smear through the translucent title bar.
+            window.contentViewController = NSHostingController(rootView: ConsoleView(model: model, state: consoleState))
             window.setFrameAutosaveName("AgentBarConsoleWindow")
             window.center()
             consoleWindow = window

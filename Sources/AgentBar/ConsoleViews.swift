@@ -234,19 +234,27 @@ struct ConsoleSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            List(selection: Binding(get: { state.page }, set: { state.page = $0 ?? .allPlatforms })) {
+            // Selection is keyed by the page's storage string rather than the
+            // enum itself: a List whose rows are tagged with an enum carrying an
+            // associated value does not commit a click on macOS 14.
+            List(selection: Binding<String?>(
+                get: { state.page.storageKey },
+                set: { newValue in
+                    guard let newValue, let page = ConsolePage.fromStorageKey(newValue) else { return }
+                    state.page = page
+                })) {
                 Section {
                     Label("All Platforms", systemImage: "square.grid.2x2")
-                        .tag(ConsolePage.allPlatforms)
+                        .tag(ConsolePage.allPlatforms.storageKey)
                     ForEach(model.sections, id: \.providerKey) { section in
-                        quotaRow(section).tag(ConsolePage.platform(section.providerKey))
+                        quotaRow(section).tag(ConsolePage.platform(section.providerKey).storageKey)
                     }
                 } header: {
                     Eyebrow("QUOTAS")
                 }
                 Section {
                     ForEach(ConsolePage.settingsPages, id: \.self) { page in
-                        Label(page.settingsTitle, systemImage: page.symbol).tag(page)
+                        Label(page.settingsTitle, systemImage: page.symbol).tag(page.storageKey)
                     }
                 } header: {
                     Eyebrow("SETTINGS")
@@ -372,7 +380,7 @@ struct AllPlatformsPage: View {
             SummaryTile(label: "Next Reset",
                         value: model.nextReset.map { glanceResetCountdown($0, now: model.now) } ?? "—",
                         symbol: "clock",
-                        detail: model.nextReset.map { $0.formatted(date: .omitted, time: .shortened) } ?? "no reset reported")
+                        detail: nextResetDetail)
             SummaryTile(label: "Fleet",
                         value: model.serverEnabled ? "\(model.fleetWindowCount) windows" : "Off",
                         symbol: "arrow.up.arrow.down.circle",
@@ -380,6 +388,18 @@ struct AllPlatformsPage: View {
                             ? (model.lastPullTime.map { "pulled \($0.formatted(date: .omitted, time: .shortened))" } ?? "never pulled")
                             : "set up fleet pull")
         }
+    }
+
+    /// Which platform and window the next reset belongs to, so the tile says
+    /// what is about to reset rather than only when.
+    private var nextResetDetail: String {
+        guard let next = model.nextReset else { return "no reset reported" }
+        for section in model.sections {
+            for snapshot in section.windows where snapshot.resetAt == next {
+                return "\(section.providerLabel), \(compactWindowName(snapshot.window.label))"
+            }
+        }
+        return next.formatted(date: .omitted, time: .shortened)
     }
 
     private func errorBanner(_ error: String) -> some View {

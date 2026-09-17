@@ -36,6 +36,9 @@ struct GlancePopover: View {
         .frame(width: Metrics.glanceWidth)
         .foregroundStyle(Theme.ink)
         .tint(Theme.accent)
+        // The popover's own material is a vibrancy blur; the header and footer
+        // need an opaque surface or they read as grey bars.
+        .background(Theme.surface)
     }
 
     // MARK: - Header
@@ -323,8 +326,8 @@ struct FleetSetupRow: View {
                     Text("Share this Mac's quota, or show your other machines here.")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right")
@@ -332,7 +335,8 @@ struct FleetSetupRow: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 12)
-            .frame(height: Metrics.glanceCTARowHeight)
+            .padding(.vertical, 8)
+            .frame(minHeight: Metrics.glanceCTARowHeight)
             .frame(maxWidth: .infinity)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.fleet.opacity(0.4)))

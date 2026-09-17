@@ -206,7 +206,7 @@ enum QuotaGlanceMetrics {
         let content = CGFloat(groups) * Metrics.glanceGroupHeaderHeight
             + CGFloat(localRows) * Metrics.glanceLocalRowHeight
             + CGFloat(fleetCount) * Metrics.glanceFleetRowHeight
-            + CGFloat(ctaRows) * (Metrics.glanceCTARowHeight + 12)
+            + CGFloat(ctaRows) * (Metrics.glanceCTARowHeight + 26)
             + (fleetCount > 0 ? 12 : 0)
         let total = Metrics.glanceHeaderHeight + Metrics.glanceFooterHeight + 18 + content
         return min(Metrics.glanceMaxHeight(), max(Metrics.glanceMinHeight, total))
