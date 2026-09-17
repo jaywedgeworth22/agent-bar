@@ -65,6 +65,8 @@ struct DisplaySection: Identifiable, Equatable {
     /// The canonical provider, for the mark, the issue text and custom info.
     let providerKey: String
     let title: String
+    /// The platform's own name, without the pool: "Antigravity".
+    let platformTitle: String
     /// The section, scoped to this row's windows and titled for the row.
     let section: QuotaPlatformSection
     let poolKey: String?
@@ -76,6 +78,9 @@ struct DisplaySection: Identifiable, Equatable {
     let maskedWindowIds: Set<String>
 
     var isPool: Bool { poolKey != nil }
+    /// The pool's name on its own: "Gemini", "Claude & GPT".  A narrow row puts
+    /// this on a second line rather than truncating the joined title.
+    var poolTitle: String? { poolKey.map(AntigravityDisplay.poolTitle) }
 
     /// The window this row speaks for, used for freshness and attribution.
     var driving: QuotaWindowSnapshot? {
@@ -114,6 +119,7 @@ struct DisplaySection: Identifiable, Equatable {
             return DisplaySection(id: "\(section.providerKey):\(pool.key)",
                                   providerKey: section.providerKey,
                                   title: title,
+                                  platformTitle: section.providerLabel,
                                   section: scoped,
                                   poolKey: pool.key,
                                   remainingPercent: pool.remainingPercent ?? lastReported?.remainingPercent,
@@ -127,6 +133,7 @@ struct DisplaySection: Identifiable, Equatable {
         return DisplaySection(id: section.providerKey,
                               providerKey: section.providerKey,
                               title: section.providerLabel,
+                              platformTitle: section.providerLabel,
                               section: section,
                               poolKey: nil,
                               remainingPercent: section.minimumRemainingPercent ?? driving?.remainingPercent,

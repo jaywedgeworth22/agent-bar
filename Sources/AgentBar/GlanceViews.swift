@@ -219,15 +219,19 @@ struct GlanceRow: View {
                 .frame(width: 16, height: 16)
             Spacer().frame(width: 6)
             VStack(alignment: .leading, spacing: 1) {
-                Text(row.title)
+                // An Antigravity row names its pool, which does not fit beside
+                // the platform in a 136pt column, so the pool takes the second
+                // line rather than being truncated away.
+                Text(row.poolTitle == nil ? row.title : row.platformTitle)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                if let attribution {
-                    Text(attribution)
+                if let subtitle = [row.poolTitle, attribution].compactMap({ $0 }).first {
+                    Text(subtitle)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                         .truncationMode(.tail)
                 }
             }

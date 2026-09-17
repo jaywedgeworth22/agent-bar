@@ -234,27 +234,29 @@ struct ConsoleSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Selection is keyed by the page's storage string rather than the
-            // enum itself: a List whose rows are tagged with an enum carrying an
-            // associated value does not commit a click on macOS 14.
-            List(selection: Binding<String?>(
-                get: { state.page.storageKey },
-                set: { newValue in
-                    guard let newValue, let page = ConsolePage.fromStorageKey(newValue) else { return }
-                    state.page = page
-                })) {
+            // Rows are buttons rather than `List(selection:)` tags, for two
+            // reasons: a List tagged with an enum carrying an associated value
+            // does not commit a click on macOS 14, and a List's own selection
+            // draws in the system accent — system blue, next to this app's teal.
+            // Drawing the highlight here settles both.
+            List {
                 Section {
-                    Label("All Platforms", systemImage: "square.grid.2x2")
-                        .tag(ConsolePage.allPlatforms.storageKey)
+                    sidebarRow(page: .allPlatforms) {
+                        Label("All Platforms", systemImage: "square.grid.2x2")
+                            .font(.system(size: 13, weight: .medium))
+                    }
                     ForEach(model.displaySections) { row in
-                        quotaRow(row).tag(ConsolePage.platform(row.id).storageKey)
+                        sidebarRow(page: .platform(row.id)) { quotaRow(row) }
                     }
                 } header: {
                     Eyebrow("QUOTAS")
                 }
                 Section {
                     ForEach(ConsolePage.settingsPages, id: \.self) { page in
-                        Label(page.settingsTitle, systemImage: page.symbol).tag(page.storageKey)
+                        sidebarRow(page: page) {
+                            Label(page.settingsTitle, systemImage: page.symbol)
+                                .font(.system(size: 13, weight: .medium))
+                        }
                     }
                 } header: {
                     Eyebrow("SETTINGS")
@@ -269,25 +271,60 @@ struct ConsoleSidebar: View {
         .background(Theme.surface)
     }
 
+    /// One selectable sidebar row, highlighted with the app's own accent.
+    private func sidebarRow<Content: View>(page: ConsolePage, @ViewBuilder content: () -> Content) -> some View {
+        let selected = state.page == page
+        return Button { state.page = page } label: {
+            content()
+                .foregroundStyle(Theme.ink)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(selected ? Theme.selection : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(selected ? Theme.accent.opacity(0.35) : .clear))
+                .contentShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .listRowInsets(EdgeInsets(top: 1, leading: 6, bottom: 1, trailing: 6))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
     /// Quotas rows carry a trailing value; Settings rows do not.  Two different
     /// row views is what stops `.listStyle(.sidebar)` aligning them identically.
     private func quotaRow(_ row: DisplaySection) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             PlatformLogo(providerKey: row.providerKey, size: 16)
-            Text(row.title)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Spacer(minLength: 4)
+            // A pool name is half again as long as a platform name, and
+            // "Antigravity · Cl…" hides the very thing the row adds, so the
+            // pool takes a second line in this 200pt column.
+            VStack(alignment: .leading, spacing: 0) {
+                Text(row.platformTitle)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                if let poolTitle = row.poolTitle {
+                    Text(poolTitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+            }
+            Spacer(minLength: 2)
             if model.issues[row.providerKey] != nil {
                 Image(systemName: "exclamationmark.circle")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.warning)
                     .accessibilityLabel("Quota unavailable")
             } else if let remaining = row.remainingPercent {
+                // A fixed column keeps the percentage on screen when the label
+                // is long enough to want every point of the row.
                 Text("\(Int(remaining.rounded()))%")
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundStyle(.secondary)
+                    .frame(width: 30, alignment: .trailing)
             } else if model.lastChecked == nil {
                 Capsule().fill(Theme.track).frame(width: 28, height: 10)
                     .accessibilityHidden(true)
