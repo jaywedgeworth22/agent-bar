@@ -156,7 +156,7 @@ struct ConsoleView: View {
                     AllPlatformsPage(model: model, state: state, query: query)
                         .padding(Metrics.pagePadding)
                 case .platform(let key):
-                    PlatformDetailPage(model: model, providerKey: key)
+                    PlatformDetailPage(model: model, state: state, providerKey: key)
                         .padding(Metrics.pagePadding)
                 case .settingsMenuBar:
                     SettingsMenuBarPage(model: model)
@@ -551,7 +551,9 @@ struct AllPlatformsPage: View {
                      compact: compact,
                      wide: false,
                      origin: origin,
-                     customInfo: model.platformCustomInfo[row.providerKey])
+                     customInfo: model.platformCustomInfo[row.providerKey],
+                     onOpenSettings: model.consentNeeded.contains(row.providerKey)
+                        ? { state.page = .settingsSourcesFleet } : nil)
     }
 }
 
@@ -559,6 +561,7 @@ struct AllPlatformsPage: View {
 
 struct PlatformDetailPage: View {
     @ObservedObject var model: MonitorModel
+    @ObservedObject var state: ConsoleState
     let providerKey: String
 
     @State private var customSubtitle = ""
@@ -592,7 +595,9 @@ struct PlatformDetailPage: View {
                              compact: false,
                              wide: true,
                              origin: model.originByProvider[row.providerKey] ?? .local,
-                             customInfo: model.platformCustomInfo[row.providerKey])
+                             customInfo: model.platformCustomInfo[row.providerKey],
+                             onOpenSettings: model.consentNeeded.contains(row.providerKey)
+                                ? { state.page = .settingsSourcesFleet } : nil)
             } else {
                 Text("Quota unavailable")
                     .font(.system(size: 13, weight: .medium))

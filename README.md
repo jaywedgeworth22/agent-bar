@@ -52,6 +52,8 @@ Antigravity sells two independent model pools, shown as two rows, **Gemini** and
 
 None of the above ever asks for a typed credential — every reader reuses a session or file the CLI already created.
 
+The first time a freshly installed AgentBar needs Claude Code's Keychain item, macOS asks whether to let it through: the login Keychain grants access per app, and a newly installed AgentBar is a new app to it, so Claude can show as signed out even while Claude Code is signed in.  Open Console → Settings → Sources & Fleet, press **Allow Access To Claude Code** on the Claude row, and choose **Always Allow** in the panel macOS puts up — it is asked once, it is a read, and AgentBar never writes to or removes Claude Code's saved login.
+
 ## Fleet Push And Pull
 
 Both off by default, configured on Console → Settings → Sources & Fleet.

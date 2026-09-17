@@ -46,7 +46,7 @@ final class LocalQuotaReaderTests: XCTestCase {
     }
 
     func testRealClaudeCredentialSourceReadsValidData() async throws {
-        guard let data = await ClaudeCredentialSource.read() else { return }
+        guard case .authorized(let data) = await ClaudeCredentialSource.access() else { return }
         XCTAssertGreaterThan(data.count, 65_536)
         let root = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         XCTAssertNotNil(root?["claudeAiOauth"])
@@ -121,8 +121,8 @@ final class LocalQuotaReaderTests: XCTestCase {
             }
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer fixture-grok")
             return Self.httpResponse(#"{"remaining_percent":40}"#)
-        }, runAntigravity: { Data("{}".utf8) }, readClaudeKeychain: {
-            Data(#"{"claudeAiOauth":{"accessToken":"fixture-claude","expiresAt":4102444800000}}"#.utf8)
+        }, runAntigravity: { Data("{}".utf8) }, readClaudeCredential: {
+            .authorized(Data(#"{"claudeAiOauth":{"accessToken":"fixture-claude","expiresAt":4102444800000}}"#.utf8))
         })
         let result = await reader.read()
         XCTAssertEqual(result.windows.first { $0.providerKey == "anthropic" }?.remainingPercent, 70)
@@ -137,15 +137,16 @@ final class LocalQuotaReaderTests: XCTestCase {
         let reader = LocalQuotaReader(
             homeDirectory: home,
             runAntigravity: { Data("{}".utf8) },
-            readClaudeKeychain: {
+            readClaudeCredential: {
                 try? await Task.sleep(nanoseconds: 10_000_000_000)
-                return Data(#"{"claudeAiOauth":{"accessToken":"never-used"}}"#.utf8)
+                return .authorized(Data(#"{"claudeAiOauth":{"accessToken":"never-used"}}"#.utf8))
             }
         )
         let result = await reader.read()
         let elapsed = started.duration(to: .now)
         XCTAssertLessThan(elapsed, .seconds(5))
-        XCTAssertEqual(result.issues["anthropic"], "Claude Code quota login is unavailable.  Sign in to Claude Code to connect subscription quotas.")
+        XCTAssertEqual(result.issues["anthropic"], ClaudeLoginState.signedOut.issue)
+        XCTAssertTrue(result.consentNeeded.isEmpty)
     }
 
     func testClaudeKeychainAcceptsPayloadsLargerThan64KB() async throws {
@@ -171,8 +172,8 @@ final class LocalQuotaReaderTests: XCTestCase {
         let reader = LocalQuotaReader(homeDirectory: home, fetchJSON: { request in
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer fixture-large-claude")
             return Self.httpResponse(#"{"five_hour":{"utilization":20}}"#)
-        }, runAntigravity: { Data("{}".utf8) }, readClaudeKeychain: {
-            payloadData
+        }, runAntigravity: { Data("{}".utf8) }, readClaudeCredential: {
+            .authorized(payloadData)
         })
         let result = await reader.read()
         XCTAssertEqual(result.windows.first { $0.providerKey == "anthropic" }?.remainingPercent, 80)

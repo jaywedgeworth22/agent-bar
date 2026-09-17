@@ -264,6 +264,10 @@ struct PlatformCard: View {
     var wide = false
     var origin: QuotaOrigin = .local
     var customInfo: PlatformCustomInfo? = nil
+    /// Set only when the issue is one the owner can actually fix in Settings —
+    /// today, the one-time Allow Access To Claude Code step.  The card then
+    /// carries the same deep link the fleet banner uses.
+    var onOpenSettings: (() -> Void)? = nil
     @State private var expanded = false
     @State private var videoExpanded = false
 
@@ -301,6 +305,7 @@ struct PlatformCard: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    openSettingsButton
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
@@ -381,6 +386,18 @@ struct PlatformCard: View {
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.warning)
                 .fixedSize(horizontal: false, vertical: true)
+            openSettingsButton
+        }
+    }
+
+    @ViewBuilder
+    private var openSettingsButton: some View {
+        if let onOpenSettings {
+            Button("Open Settings", action: onOpenSettings)
+                .controlSize(.small)
+                .help("Open Settings")
+                .accessibilityLabel("Open Settings")
+                .padding(.top, 2)
         }
     }
 }
