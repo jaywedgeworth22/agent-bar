@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgentBar — See Your AI Coding Quota From The Menu Bar</title>
-<meta name="description" content="AgentBar is a free, open-source macOS menu bar app that shows how much quota is left on every AI coding CLI signed in on your Mac, and can push and pull those readings across the machines you use.">
+<title>CodeCaps — See Your AI Coding Quota From The Menu Bar</title>
+<meta name="description" content="CodeCaps is a free, open-source macOS menu bar app that shows how much quota is left on every AI coding CLI signed in on your Mac, and can push and pull those readings across the machines you use.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMwQjZCNUQiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIxNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjYiLz48Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSI0IiBmaWxsPSIjZmZmZmZmIi8+PC9zdmc+">
 <style>
   :root{
@@ -86,25 +86,25 @@
 <body>
 
 <header class="hero">
-  <img class="app-icon" src="icon-192.png" width="96" height="96" alt="AgentBar app icon">
-  <h1>AgentBar</h1>
+  <img class="app-icon" src="icon-192.png" width="96" height="96" alt="CodeCaps app icon">
+  <h1>CodeCaps</h1>
   <p class="tagline">See how much of every AI coding agent's quota is left, from the menu bar.</p>
 </header>
 
 <main>
   <section id="install" class="container">
-    <h2>Install AgentBar</h2>
+    <h2>Install CodeCaps</h2>
     <div class="install-grid">
       <div class="card">
         <h3>Homebrew</h3>
         <div class="code-row">
-          <pre><code id="brew-cmd">brew install --cask jaywedgeworth22/tap/agent-bar</code></pre>
+          <pre><code id="brew-cmd">brew install --cask jaywedgeworth22/tap/codecaps</code></pre>
           <button type="button" id="copy-btn" aria-label="Copy Homebrew Install Command">Copy</button>
         </div>
       </div>
       <div class="card">
         <h3>Direct Download</h3>
-        <a class="btn-primary" href="https://github.com/jaywedgeworth22/agent-bar/releases/latest/download/AgentBar.dmg">Download For Mac</a>
+        <a class="btn-primary" href="https://github.com/jaywedgeworth22/codecaps/releases/latest/download/CodeCaps.dmg">Download For Mac</a>
         <p class="fine-print">macOS 14 or later · Apple silicon and Intel · signed and notarized · free, MIT</p>
       </div>
     </div>
@@ -136,7 +136,7 @@
 
   <section id="providers" class="container">
     <h2>What It Reads</h2>
-    <p>AgentBar reads each CLI's own saved credentials, in place — nothing is typed, ever.</p>
+    <p>CodeCaps reads each CLI's own saved credentials, in place — nothing is typed, ever.</p>
     <ul class="provider-list">
       <li><strong>Claude</strong> — quota windows (5-hour and weekly), read from <code>~/.claude/.credentials.json</code> or the Keychain.</li>
       <li><strong>Codex</strong> — rate-limit windows, read from <code>~/.codex/auth.json</code>.</li>
@@ -146,12 +146,12 @@
       <li><strong>Grok Bot</strong> — weekly usage, read via Cursor's dashboard service, from that same session database.</li>
       <li><strong>MiniMax</strong> — per-model and weekly remaining quota, read from <code>~/.mmx/config.json</code>.</li>
     </ul>
-    <p>The first time a freshly installed AgentBar needs Claude Code’s Keychain item, macOS asks whether to let it through.  The login Keychain grants access per app, so a brand new AgentBar is a brand new app to it, and Claude can read as signed out while Claude Code is signed in.  Press <strong>Allow Access To Claude Code</strong> on the Claude row in Settings → Sources &amp; Fleet and choose <strong>Always Allow</strong>: it is asked once, it is a read, and AgentBar never writes to or removes Claude Code’s saved login.</p>
+    <p>The first time a freshly installed CodeCaps needs Claude Code’s Keychain item, macOS asks whether to let it through.  The login Keychain grants access per app, so a brand new CodeCaps is a brand new app to it, and Claude can read as signed out while Claude Code is signed in.  Press <strong>Allow Access To Claude Code</strong> on the Claude row in Settings → Sources &amp; Fleet and choose <strong>Always Allow</strong>: it is asked once, it is a read, and CodeCaps never writes to or removes Claude Code’s saved login.</p>
   </section>
 
   <section id="fleet" class="container">
     <h2>Fleet Push And Pull</h2>
-    <p>AgentBar can push this Mac's quota windows to an endpoint you run, and pull other machines' windows back into the same view.  Both are off by default, and nothing leaves this Mac until you turn one on and enter an endpoint yourself.  The two secrets it stores, an ingest token and a read token, live in the macOS Keychain, never a config file.</p>
+    <p>CodeCaps can push this Mac's quota windows to an endpoint you run, and pull other machines' windows back into the same view.  Both are off by default, and nothing leaves this Mac until you turn one on and enter an endpoint yourself.  The two secrets it stores, an ingest token and a read token, live in the macOS Keychain, never a config file.</p>
     <figure>
       <img src="screenshots/settings-sources-fleet.png" width="1280" height="896" loading="lazy" decoding="async" alt="Console Settings, Sources and Fleet page, with This Mac, Share This Mac, and Pull The Fleet groups">
       <figcaption>Settings → Sources &amp; Fleet</figcaption>
@@ -173,12 +173,12 @@
 
   <section id="is-this-for-you" class="container">
     <h2>Is This For You?</h2>
-    <p>If you only run one Mac, better tools already exist: <a href="https://github.com/steipete/CodexBar">steipete/CodexBar</a> and <a href="https://github.com/tddworks/ClaudeBar">tddworks/ClaudeBar</a> both cover more providers than AgentBar does, and both are free, signed, and notarized.  AgentBar exists for a different job, reading quota into a collector you run yourself and pulling it back across every machine you use.</p>
+    <p>If you only run one Mac, better tools already exist: <a href="https://github.com/steipete/CodexBar">steipete/CodexBar</a> and <a href="https://github.com/tddworks/ClaudeBar">tddworks/ClaudeBar</a> both cover more providers than CodeCaps does, and both are free, signed, and notarized.  CodeCaps exists for a different job, reading quota into a collector you run yourself and pulling it back across every machine you use.</p>
   </section>
 </main>
 
 <footer class="container">
-  <p><a href="https://github.com/jaywedgeworth22/agent-bar">AgentBar on GitHub</a> · MIT license</p>
+  <p><a href="https://github.com/jaywedgeworth22/codecaps">CodeCaps on GitHub</a> · MIT license</p>
   <p>Provider names and marks belong to their owners and are used only to identify the services.</p>
 </footer>
 

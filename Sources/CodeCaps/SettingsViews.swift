@@ -30,7 +30,7 @@ struct SettingsMenuBarPage: View {
                 .pickerStyle(.segmented)
             } footer: {
                 Text("Both keeps the menu bar icon and a Dock icon." + sentenceGap
-                     + "Dock hides the menu bar icon, so use Open AgentBar to reach your quota.")
+                     + "Dock hides the menu bar icon, so use Open CodeCaps to reach your quota.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -230,7 +230,7 @@ struct SettingsSourcesFleetPage: View {
             Eyebrow("THIS MAC")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("AgentBar reads each CLI's own saved credentials in place." + sentenceGap
+                Text("CodeCaps reads each CLI's own saved credentials in place." + sentenceGap
                      + "It never asks you for a provider API key.")
                 Text("A snapshot is written to ~/Library/Application Support/Usage Monitor/quota-windows.json for BotFleet.")
                 if let handoffError = model.handoffError {
@@ -283,7 +283,7 @@ struct SettingsSourcesFleetPage: View {
     }
 
     /// The one-time consent step.  macOS guards another app's Keychain item
-    /// per code identity, so a freshly installed AgentBar has to be allowed
+    /// per code identity, so a freshly installed CodeCaps has to be allowed
     /// once before it can read Claude Code's saved login.
     @ViewBuilder
     private var claudeConsentControls: some View {
@@ -560,7 +560,7 @@ private struct ReauthorizeCaption: View {
                 }
             }
         } footer: {
-            Text("Refreshes every 5 minutes while AgentBar is running.")
+            Text("Refreshes every 5 minutes while CodeCaps is running.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
@@ -634,7 +634,7 @@ struct SettingsAboutPage: View {
     @ObservedObject var model: MonitorModel
     @ObservedObject var state: ConsoleState
 
-    private static let projectPage = URL(string: "https://github.com/jaywedgeworth22/agent-bar")!
+    private static let projectPage = URL(string: "https://github.com/jaywedgeworth22/codecaps")!
 
     private var pushingDetail: String {
         guard model.syncEnabled else { return "Off" }
@@ -655,8 +655,8 @@ struct SettingsAboutPage: View {
                         .font(.system(size: 34))
                         .foregroundStyle(Theme.accent)
                         .accessibilityHidden(true)
-                    Text("AgentBar").font(.system(size: 16, weight: .semibold))
-                    Text(AgentBarVersion.display)
+                    Text("CodeCaps").font(.system(size: 16, weight: .semibold))
+                    Text(CodeCapsVersion.display)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -679,7 +679,7 @@ struct SettingsAboutPage: View {
                 .help("Project Page")
                 .accessibilityLabel("Project Page")
             } footer: {
-                Text("AgentBar reads quota from agent CLIs already signed in on this Mac." + sentenceGap
+                Text("CodeCaps reads quota from agent CLIs already signed in on this Mac." + sentenceGap
                      + "It never stores a provider API key.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)

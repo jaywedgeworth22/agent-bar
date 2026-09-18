@@ -5,11 +5,11 @@ MODE="${1:-run}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_DIR="$ROOT_DIR"
 DIST_DIR="$PACKAGE_DIR/dist"
-APP_NAME="AgentBar"
-PRODUCT_NAME="AgentBar"
+APP_NAME="CodeCaps"
+PRODUCT_NAME="CodeCaps"
 RELEASE_BUNDLE_ID="com.jays.agent-bar.mac"
 DEV_BUNDLE_ID="com.jays.agent-bar.mac.dev"
-BUNDLE_ID="${AGENTBAR_BUNDLE_ID:-$RELEASE_BUNDLE_ID}"
+BUNDLE_ID="${CODECAPS_BUNDLE_ID:-${AGENTBAR_BUNDLE_ID:-$RELEASE_BUNDLE_ID}}"
 CONFIGURATION="debug"
 MIN_SYSTEM_VERSION="14.0"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
@@ -27,7 +27,7 @@ INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
 VERSION_FILE="$ROOT_DIR/VERSION"
 ZIP_FILE="$DIST_DIR/$APP_NAME.zip"
 DMG_FILE="$DIST_DIR/$APP_NAME.dmg"
-NOTARY_PROFILE="${AGENTBAR_NOTARY_PROFILE:-agentbar-notary}"
+NOTARY_PROFILE="${CODECAPS_NOTARY_PROFILE:-${AGENTBAR_NOTARY_PROFILE:-agentbar-notary}}"
 # Release artifacts are universal.  A build that only runs on the machine that
 # made it is not a release, and an Intel Mac has no Rosetta for arm64 code.
 UNIVERSAL_ARCHS=(arm64 x86_64)
@@ -59,30 +59,31 @@ usage: script/build_and_run.sh [mode]
                  and remove the staged .app afterwards
   --release      --package, then notarize and staple the app, rebuild the zip
                  from the stapled bundle, and build, sign, notarize and staple
-                 dist/AgentBar.dmg.  Both artifacts get a .sha256 beside them.
+                 dist/CodeCaps.dmg.  Both artifacts get a .sha256 beside them.
                  Notarization uses the keychain profile named by
                  $AGENTBAR_NOTARY_PROFILE, default "agentbar-notary"
-  --build-only   stage dist/AgentBar.app and stop
+  --build-only   stage dist/CodeCaps.app and stop
   --debug        stage and run under lldb
   --logs         stage, launch, and stream the process log
   --telemetry    stage, launch, and stream this bundle identifier's log
   --verify       stage, launch, and confirm the process is running
 
-  There is exactly one installed copy, at ~/Applications/AgentBar.app.  Every
+  There is exactly one installed copy, at ~/Applications/CodeCaps.app.  Every
   mode that installs also prunes: any other bundle whose CFBundleIdentifier is
   com.jays.agent-bar.mac, under /Applications, ~/Applications, ~/Desktop,
   ~/Downloads, iCloud Downloads or this checkout's dist/, is moved to the Trash
   and printed.  Bundles with another identifier, and bundles inside another
-  checkout, are never touched.  Set AGENTBAR_PRUNE_DRY_RUN=1 to print what the
-  prune would Trash without moving anything.
+  checkout, are never touched.  Set CODECAPS_PRUNE_DRY_RUN=1 (or
+  AGENTBAR_PRUNE_DRY_RUN=1) to print what the prune would Trash without moving
+  anything.
 
-  Signing: $AGENTBAR_CODESIGN_IDENTITY when it is set, otherwise the first
-  "Developer ID Application:" identity in the codesigning keychain, otherwise
-  ad-hoc with a warning.  A stable identity is what lets the saved Read Token
-  and Ingest Token survive a rebuild — ad-hoc gives every build a different
-  code identity, so the Keychain stops trusting the new one.  --package also
-  signs with the hardened runtime and a secure timestamp and prints the
-  notarytool command; --release is the mode that actually notarizes.
+  Signing: $CODECAPS_CODESIGN_IDENTITY or $AGENTBAR_CODESIGN_IDENTITY when set,
+  otherwise the first "Developer ID Application:" identity in the codesigning
+  keychain, otherwise ad-hoc with a warning.  A stable identity is what lets
+  the saved Read Token and Ingest Token survive a rebuild — ad-hoc gives every
+  build a different code identity, so the Keychain stops trusting the new one.
+  --package also signs with the hardened runtime and a secure timestamp and
+  prints the notarytool command; --release is the mode that actually notarizes.
 
   Versions: CFBundleShortVersionString is the VERSION file at the repo root, so
   cutting a release is one edit.  CFBundleVersion is `git rev-list --count
@@ -118,8 +119,8 @@ kill_installed_app() {
 SIGN_OPTIONS=()
 
 resolve_codesign_identity() {
-  if [[ -n "${AGENTBAR_CODESIGN_IDENTITY:-}" ]]; then
-    printf '%s\n' "$AGENTBAR_CODESIGN_IDENTITY"
+  if [[ -n "${CODECAPS_CODESIGN_IDENTITY:-${AGENTBAR_CODESIGN_IDENTITY:-}}" ]]; then
+    printf '%s\n' "${CODECAPS_CODESIGN_IDENTITY:-$AGENTBAR_CODESIGN_IDENTITY}"
     return 0
   fi
   /usr/bin/security find-identity -v -p codesigning 2>/dev/null \
@@ -346,7 +347,7 @@ install_owned_app() {
       echo "overwriting bundle with identifier '$existing_id': $destination"
     fi
     # The copy being replaced has to stop running, and it is addressed by its
-    # exact executable path so no other app named AgentBar is ever signalled.
+    # exact executable path so no other app named CodeCaps is ever signalled.
     kill_installed_app
   fi
   cp -R "$APP_BUNDLE" "$staging"
@@ -367,7 +368,7 @@ install_owned_app() {
 # recoverable.  `rm -rf` on an app bundle is not.
 trash_path() {
   local path="$1"
-  if [[ "${AGENTBAR_PRUNE_DRY_RUN:-0}" == "1" ]]; then
+  if [[ "${CODECAPS_PRUNE_DRY_RUN:-${AGENTBAR_PRUNE_DRY_RUN:-0}}" == "1" ]]; then
     echo "would trash $path"
     return 0
   fi
@@ -383,7 +384,7 @@ trash_path() {
 # does: a different identifier is skipped, and no other checkout is searched.
 prune_other_copies() {
   local keep="$1"
-  local root candidate identifier
+  local root candidate identifier executable
   for root in "${PRUNE_ROOTS[@]}"; do
     [[ -d "$root" ]] || continue
     while IFS= read -r candidate; do
@@ -391,9 +392,12 @@ prune_other_copies() {
       [[ "$candidate" != "$keep" ]] || continue
       identifier="$(bundle_identifier "$candidate")"
       [[ "$identifier" == "$RELEASE_BUNDLE_ID" ]] || continue
-      kill_owned_process "$candidate/Contents/MacOS/$PRODUCT_NAME"
+      executable="$(/usr/bin/plutil -extract CFBundleExecutable raw -o - "$candidate/Contents/Info.plist" 2>/dev/null || true)"
+      if [[ -n "$executable" ]]; then
+        kill_owned_process "$candidate/Contents/MacOS/$executable"
+      fi
       trash_path "$candidate"
-    done < <(find "$root" -maxdepth 3 -name "$APP_NAME.app" -type d 2>/dev/null)
+    done < <(find "$root" -maxdepth 3 \( -name "$APP_NAME.app" -o -name "AgentBar.app" \) -type d 2>/dev/null)
   done
 }
 

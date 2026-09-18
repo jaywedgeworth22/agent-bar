@@ -1,22 +1,22 @@
-# AgentBar
+# CodeCaps
 
 A macOS menu bar app that reads AI coding CLI quotas already on your Mac, and pushes and pulls them across a fleet of machines you control.
 
-**[Download AgentBar →](https://jaywedgeworth22.github.io/agent-bar/)**
+**[Download CodeCaps →](https://jaywedgeworth22.github.io/codecaps/)**
 
 ## Why This Exists
 
-AgentBar reads quota for the AI coding CLIs already signed in on this Mac — no provider API key is ever entered — and can push those readings to a server you run, and pull that server's aggregated readings back, so one Glance popover shows more than one machine's quota at once.
+CodeCaps reads quota for the AI coding CLIs already signed in on this Mac — no provider API key is ever entered — and can push those readings to a server you run, and pull that server's aggregated readings back, so one Glance popover shows more than one machine's quota at once.
 
-For a single Mac, better tools already exist.  [steipete/CodexBar](https://github.com/steipete/CodexBar) (MIT, 69 providers, signed and notarized) and [tddworks/ClaudeBar](https://github.com/tddworks/ClaudeBar) (MIT, 20+ providers, signed and notarized) both cover every provider AgentBar does, and go further.  If you only care about the machine in front of you, use one of those instead.
+For a single Mac, better tools already exist.  [steipete/CodexBar](https://github.com/steipete/CodexBar) (MIT, 69 providers, signed and notarized) and [tddworks/ClaudeBar](https://github.com/tddworks/ClaudeBar) (MIT, 20+ providers, signed and notarized) both cover every provider CodeCaps does, and go further.  If you only care about the machine in front of you, use one of those instead.
 
-AgentBar's reason to exist is what neither handles: pushing quota to your own endpoint, and pulling a fleet's worth of machines back into one view.
+CodeCaps's reason to exist is what neither handles: pushing quota to your own endpoint, and pulling a fleet's worth of machines back into one view.
 
 ## What It Shows
 
-AgentBar has two surfaces.  Nothing renders in both.
+CodeCaps has two surfaces.  Nothing renders in both.
 
-**Glance** is the menu bar popover — the two-second check.  One row per platform, grouped under `This Mac` and `Fleet`, each with a percentage, a usage bar, and a reset countdown.  Read-only aside from Refresh, Settings, and Open AgentBar.
+**Glance** is the menu bar popover — the two-second check.  One row per platform, grouped under `This Mac` and `Fleet`, each with a percentage, a usage bar, and a reset countdown.  Read-only aside from Refresh, Settings, and Open CodeCaps.
 
 <img src="docs/screenshots/glance-light.png" width="380" alt="Glance, light"> <img src="docs/screenshots/glance-dark.png" width="380" alt="Glance, dark">
 
@@ -52,13 +52,13 @@ Antigravity sells two independent model pools, shown as two rows, **Gemini** and
 
 None of the above ever asks for a typed credential — every reader reuses a session or file the CLI already created.
 
-The first time a freshly installed AgentBar needs Claude Code's Keychain item, macOS asks whether to let it through: the login Keychain grants access per app, and a newly installed AgentBar is a new app to it, so Claude can show as signed out even while Claude Code is signed in.  Open Console → Settings → Sources & Fleet, press **Allow Access To Claude Code** on the Claude row, and choose **Always Allow** in the panel macOS puts up — it is asked once, it is a read, and AgentBar never writes to or removes Claude Code's saved login.
+The first time a freshly installed CodeCaps needs Claude Code's Keychain item, macOS asks whether to let it through: the login Keychain grants access per app, and a newly installed CodeCaps is a new app to it, so Claude can show as signed out even while Claude Code is signed in.  Open Console → Settings → Sources & Fleet, press **Allow Access To Claude Code** on the Claude row, and choose **Always Allow** in the panel macOS puts up — it is asked once, it is a read, and CodeCaps never writes to or removes Claude Code's saved login.
 
 ## Fleet Push And Pull
 
 Both off by default, configured on Console → Settings → Sources & Fleet.
 
-**Push formats** — two, chosen when pushing.
+**Push formats** — two, chosen when pushing.  The producer id stays `agent-bar`, so a rename of the app does not split an existing Usage Monitor history.
 
 `usage_monitor_v2` — one event per quota window:
 
@@ -119,7 +119,7 @@ Both off by default, configured on Console → Settings → Sources & Fleet.
 }
 ```
 
-**Pull.**  AgentBar reads a server's aggregated windows back (`generatedAt`, `windows[]`, optional `providerGroups[]`) as `Fleet` rows.  A window is attributed to a machine by whatever `source`/`sourceApp` it carries — no machine identifier field exists yet, so indistinguishable Macs show up as one fleet origin.
+**Pull.**  CodeCaps reads a server's aggregated windows back (`generatedAt`, `windows[]`, optional `providerGroups[]`) as `Fleet` rows.  A window is attributed to a machine by whatever `source`/`sourceApp` it carries — no machine identifier field exists yet, so indistinguishable Macs show up as one fleet origin.
 
 **Endpoint rules.**  HTTPS required for any host; plain HTTP only for loopback (`localhost`, `127.0.0.1`, `::1`).  A URL with embedded credentials, a query string, or a fragment is rejected.
 
@@ -127,7 +127,7 @@ Both off by default, configured on Console → Settings → Sources & Fleet.
 
 ## Local Handoff File
 
-Independent of any server, AgentBar writes a credential-free local snapshot to:
+Independent of any server, CodeCaps writes a credential-free local snapshot to:
 
 ```
 ~/Library/Application Support/Usage Monitor/quota-windows.json
@@ -140,28 +140,28 @@ for other local consumers (for example, BotFleet's Usage Monitor).  `format` is 
 **Homebrew**
 
 ```bash
-brew install --cask jaywedgeworth22/tap/agent-bar
+brew install --cask jaywedgeworth22/tap/codecaps
 ```
 
 **Download**
 
-Grab the signed and notarized `AgentBar.dmg` from the [latest release](https://github.com/jaywedgeworth22/agent-bar/releases/latest).
+Grab the signed and notarized `CodeCaps.dmg` from the [latest release](https://github.com/jaywedgeworth22/codecaps/releases/latest).
 
 **Build From Source**
 
 Requirements: macOS 14+, Apple silicon or Intel, Xcode Command Line Tools with a Swift 5.9+ toolchain.
 
 ```bash
-git clone https://github.com/jaywedgeworth22/agent-bar.git
-cd agent-bar
+git clone https://github.com/jaywedgeworth22/codecaps.git
+cd codecaps
 script/build_and_run.sh            # build, install to ~/Applications, and relaunch
 ```
 
-Other modes: `--install` (same, no relaunch); `--dev` (separate `.dev` identifier into `dist/`, launched beside the installed copy; `--dev-stop` quits it and removes `dist/`); `--package` (universal Release, zipped into `dist/` with a SHA-256 file); `--release` (`--package`, then notarize and staple the app, and build, sign, notarize and staple `dist/AgentBar.dmg`); `--build-only` (stage `dist/AgentBar.app` only).
+Other modes: `--install` (same, no relaunch); `--dev` (separate `.dev` identifier into `dist/`, launched beside the installed copy; `--dev-stop` quits it and removes `dist/`); `--package` (universal Release, zipped into `dist/` with a SHA-256 file); `--release` (`--package`, then notarize and staple the app, and build, sign, notarize and staple `dist/CodeCaps.dmg`); `--build-only` (stage `dist/CodeCaps.app` only).
 
 `--package` and `--release` build one universal binary for Apple silicon and Intel, verified with `lipo -archs`.  `CFBundleShortVersionString` comes from the `VERSION` file at the repo root, so cutting a release is one edit, and `CFBundleVersion` is the commit count.  `--release` notarizes through the keychain profile named by `AGENTBAR_NOTARY_PROFILE` (default `agentbar-notary`), which you create once with `xcrun notarytool store-credentials`.
 
-`run` and `--install` keep exactly one installed copy, at `~/Applications/AgentBar.app`: any other bundle with the same release identifier, in the usual install locations or this checkout's `dist/`, is Trashed and printed.  `AGENTBAR_PRUNE_DRY_RUN=1` previews without moving anything; `AGENTBAR_BUNDLE_ID` builds under a distinct identifier, for more than one checkout.
+`run` and `--install` keep exactly one installed copy, at `~/Applications/CodeCaps.app`: any other bundle with the same release identifier, in the usual install locations or this checkout's `dist/`, is Trashed and printed, including a copy still named `AgentBar.app`.  `CODECAPS_PRUNE_DRY_RUN=1` previews without moving anything; `CODECAPS_BUNDLE_ID` builds under a distinct identifier, for more than one checkout.
 
 **Signing** is still evolving — take this as current-best, not a fixed contract.  The script signs with a Developer ID Application identity when available (`AGENTBAR_CODESIGN_IDENTITY`, or the first one already in your keychains), falling back to ad-hoc (`codesign --sign -`) if none is found or signing times out.  This matters beyond Gatekeeper: a stable identity keeps saved tokens (Sources & Fleet) readable across rebuilds; ad-hoc, every build gets a new identity, so a saved token needs Re-Authorize Saved Token afterward.
 
@@ -191,7 +191,7 @@ Console's sidebar has five Settings pages.
 
 ## Provider Marks
 
-Every mark is a template image — only its silhouette is used, colored from the label.  `claude.svg`, `openai.svg`, `grok.svg`, `minimax.svg` and `gemini.svg` are BotFleet's own assets (subject to their source licenses); Antigravity reuses the Gemini mark, Grok CLI/Grok Bot the Grok mark.  `cursor.svg` is from [Simple Icons](https://cdn.simpleicons.org/cursor), CC0 1.0; details in `Sources/AgentBar/Resources/ProviderMarks/README.md`.
+Every mark is a template image — only its silhouette is used, colored from the label.  `claude.svg`, `openai.svg`, `grok.svg`, `minimax.svg` and `gemini.svg` are BotFleet's own assets (subject to their source licenses); Antigravity reuses the Gemini mark, Grok CLI/Grok Bot the Grok mark.  `cursor.svg` is from [Simple Icons](https://cdn.simpleicons.org/cursor), CC0 1.0; details in `Sources/CodeCaps/Resources/ProviderMarks/README.md`.
 
 ## Development
 

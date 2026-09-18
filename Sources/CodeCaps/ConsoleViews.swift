@@ -54,7 +54,7 @@ enum ConsolePage: Hashable {
         case .settingsSourcesFleet: return "Sources & Fleet"
         case .settingsAppearance: return "Appearance"
         case .settingsAbout: return "About"
-        default: return "AgentBar"
+        default: return "CodeCaps"
         }
     }
 
@@ -358,7 +358,7 @@ struct ConsoleSidebar: View {
                     .foregroundStyle(Theme.warning)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text(AgentBarVersion.display)
+            Text(CodeCapsVersion.display)
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
         }
@@ -489,7 +489,7 @@ struct AllPlatformsPage: View {
         ContentUnavailableView {
             Label("Connect a Quota Source", systemImage: "link")
         } description: {
-            Text("AgentBar reads quota from the agent CLIs already signed in on this Mac."
+            Text("CodeCaps reads quota from the agent CLIs already signed in on this Mac."
                  + sentenceGap + "You can also pull quota from your other machines.")
         } actions: {
             HStack(spacing: 10) {
@@ -635,12 +635,37 @@ struct PlatformDetailPage: View {
                     .onChange(of: showCostAndRenewal) { _, _ in save() }
                 field("Plan Name", "e.g. Max 20x, Pro", $planName, disabled: !showCostAndRenewal)
                 field("Cost", "e.g. $20/mo", $costUsd, disabled: !showCostAndRenewal)
-                field("Renewal Date", "e.g. Oct 12 or Monthly", $renewalDate, disabled: !showCostAndRenewal)
+                field("Renewal Date", "e.g. Oct 12 or Monthly", renewalField,
+                      caption: renewalDate.isEmpty && !suggestedRenewal.isEmpty
+                        ? "Filled from this platform's billing cycle. Type to override."
+                        : nil,
+                      disabled: !showCostAndRenewal)
             }
             .padding(16)
             .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline))
         }
+    }
+
+    /// Empty stored text means "keep tracking the billing cycle".  The field
+    /// still shows that date, and typing anything else pins an override.
+    private var suggestedRenewal: String {
+        guard let row else { return "" }
+        return BillingRenewal.text(for: row.section.windows.map(\.window)) ?? ""
+    }
+
+    private var renewalField: Binding<String> {
+        Binding(
+            get: { renewalDate.isEmpty ? suggestedRenewal : renewalDate },
+            set: { newValue in
+                let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty || trimmed == suggestedRenewal {
+                    renewalDate = ""
+                } else {
+                    renewalDate = newValue
+                }
+            }
+        )
     }
 
     private func field(_ label: String, _ placeholder: String, _ binding: Binding<String>,
@@ -683,7 +708,7 @@ struct PlatformDetailPage: View {
 }
 
 /// Version string, read once from the bundle the build script writes.
-enum AgentBarVersion {
+enum CodeCapsVersion {
     static let display: String = {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? "1.0"

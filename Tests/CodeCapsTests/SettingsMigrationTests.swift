@@ -1,5 +1,5 @@
 import XCTest
-@testable import AgentBar
+@testable import CodeCaps
 
 /// The pull and sync endpoints default to empty strings, and both features
 /// default to disabled, so a fresh install never posts to anyone else's

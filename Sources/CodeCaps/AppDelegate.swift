@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 @main
-enum AgentBarMain {
+enum CodeCapsMain {
     @MainActor
     static func main() {
         // Single-instance guard keyed on this build's own bundle identifier, so a
@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             self?.consoleWindow?.level = pinned ? .floating : .normal
         }.store(in: &subscriptions)
         consoleState.$page.removeDuplicates().sink { [weak self] page in
-            self?.consoleWindow?.title = page.isSettings ? "AgentBar Settings" : "AgentBar"
+            self?.consoleWindow?.title = page.isSettings ? "CodeCaps Settings" : "CodeCaps"
         }.store(in: &subscriptions)
         model.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async { self?.updateStatus() }
@@ -123,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 let symbolName = target != nil
                     ? PlatformLogoImage.fallbackSymbolName(for: providerKey)
                     : "gauge.with.dots.needle.50percent"
-                iconImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: "AgentBar")
+                iconImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: "CodeCaps")
                 iconImage?.isTemplate = true
             }
             button.image = iconImage
@@ -137,8 +137,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             button.title = " \(title)"
         }
 
-        button.toolTip = "AgentBar · \(detail)"
-        button.setAccessibilityLabel("AgentBar, \(detail)")
+        button.toolTip = "CodeCaps · \(detail)"
+        button.setAccessibilityLabel("CodeCaps, \(detail)")
     }
 
     // MARK: - Status item
@@ -165,11 +165,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             menu.addItem(entry)
         }
         add("Refresh Quotas", #selector(refresh), "r")
-        add("Open AgentBar", #selector(showMonitor), "1")
+        add("Open CodeCaps", #selector(showMonitor), "1")
         add("Settings…", #selector(showSettings), ",")
         menu.addItem(.separator())
-        add("About AgentBar", #selector(showAbout))
-        add("Quit AgentBar", #selector(quit), "q")
+        add("About CodeCaps", #selector(showAbout))
+        add("Quit CodeCaps", #selector(quit), "q")
         statusMenu = menu
         item.menu = menu
         item.button?.performClick(nil)
@@ -229,7 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             window.setFrameAutosaveName("AgentBarConsoleWindow")
             consoleWindow = window
         }
-        consoleWindow?.title = consoleState.page.isSettings ? "AgentBar Settings" : "AgentBar"
+        consoleWindow?.title = consoleState.page.isSettings ? "CodeCaps Settings" : "CodeCaps"
         consoleWindow?.level = model.keepConsoleInFront ? .floating : .normal
         consoleWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -256,14 +256,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             item.target = self
             appMenu.addItem(item)
         }
-        add("Open AgentBar", #selector(showMonitor), "1")
+        add("Open CodeCaps", #selector(showMonitor), "1")
         add("Glance", #selector(togglePopover), "2")
         add("Settings…", #selector(showSettings), ",")
         add("Refresh Quotas", #selector(refresh), "r")
         add("Keep In Front", #selector(toggleKeepInFront), "p")
         appMenu.addItem(.separator())
-        add("About AgentBar", #selector(showAbout))
-        add("Quit AgentBar", #selector(quit), "q")
+        add("About CodeCaps", #selector(showAbout))
+        add("Quit CodeCaps", #selector(quit), "q")
         appItem.submenu = appMenu
         menu.addItem(appItem)
         let editItem = NSMenuItem()

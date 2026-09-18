@@ -5,7 +5,7 @@ import XCTest
 /// The one-time Allow Access To Claude Code step.
 ///
 /// macOS guards Claude Code's Keychain item per code identity, so a freshly
-/// installed AgentBar reads nothing until the owner allows it once.  "Nothing
+/// installed CodeCaps reads nothing until the owner allows it once.  "Nothing
 /// is there" and "something is there that I may not read" used to arrive as
 /// the same empty result, and a signed-in owner was told to sign in.
 ///
@@ -28,7 +28,7 @@ final class ClaudeConsentTests: XCTestCase {
         let state = ClaudeLoginState.resolve(hasUsableCredential: false, access: .unauthorized)
         XCTAssertEqual(state, .needsPermission)
         XCTAssertTrue(state.needsConsent)
-        XCTAssertEqual(state.issue, "AgentBar needs your permission to read Claude Code's saved login.")
+        XCTAssertEqual(state.issue, "CodeCaps needs your permission to read Claude Code's saved login.")
     }
 
     func testReadableItemIsConnected() {

@@ -44,7 +44,7 @@ struct GlancePopover: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text("AgentBar").font(.system(size: 13, weight: .semibold))
+            Text("CodeCaps").font(.system(size: 13, weight: .semibold))
             Spacer(minLength: 8)
             Text(headerStatus)
                 .font(.system(size: 11).monospacedDigit())
@@ -174,13 +174,13 @@ struct GlancePopover: View {
 
             Button { openConsole(.allPlatforms) } label: {
                 HStack(spacing: 5) {
-                    Text("Open AgentBar")
+                    Text("Open CodeCaps")
                     Text("⌘1").font(.system(size: 10)).foregroundStyle(.tertiary)
                 }
             }
             .buttonStyle(.borderedProminent)
-            .help("Open AgentBar")
-            .accessibilityLabel("Open AgentBar")
+            .help("Open CodeCaps")
+            .accessibilityLabel("Open CodeCaps")
         }
         .padding(.horizontal, Metrics.glanceGutter)
         .frame(height: Metrics.glanceFooterHeight)

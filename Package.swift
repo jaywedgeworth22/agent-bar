@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "AgentBar",
+    name: "CodeCaps",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "AgentBar", targets: ["AgentBar"]),
+        .executable(name: "CodeCaps", targets: ["CodeCaps"]),
         .library(name: "QuotaCore", targets: ["QuotaCore"]),
     ],
     targets: [
         .target(name: "QuotaCore", linkerSettings: [.linkedLibrary("sqlite3")]),
         .executableTarget(
-            name: "AgentBar",
+            name: "CodeCaps",
             dependencies: ["QuotaCore"],
             resources: [.process("Resources")]
         ),
         .testTarget(name: "QuotaCoreTests", dependencies: ["QuotaCore"]),
-        .testTarget(name: "AgentBarTests", dependencies: ["AgentBar"]),
+        .testTarget(name: "CodeCapsTests", dependencies: ["CodeCaps"]),
     ]
 )

@@ -167,9 +167,12 @@ extension QuotaPlatformSection {
             return custom.customSubtitle
         }
         if let custom = customInfo, custom.showCostAndRenewal {
+            let renewal = custom.renewalDateText.isEmpty
+                ? (BillingRenewal.text(for: windows.map(\.window)) ?? "")
+                : custom.renewalDateText
             let parts = [custom.planName,
                          custom.costUsd,
-                         custom.renewalDateText.isEmpty ? "" : "Renews \(custom.renewalDateText)"]
+                         renewal.isEmpty ? "" : "Renews \(renewal)"]
                 .filter { !$0.isEmpty }
             if !parts.isEmpty { return parts.joined(separator: " · ") }
         }

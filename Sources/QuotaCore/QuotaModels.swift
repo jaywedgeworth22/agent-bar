@@ -673,3 +673,27 @@ public struct PlatformCustomInfo: Codable, Equatable, Sendable {
     }
 }
 
+/// The Renewal Date field is a free-text override.  When the owner has not
+/// typed one, a platform that actually reports a billing-cycle end (Cursor's
+/// `billingCycleEnd`) fills it in.  A 5-hour or weekly quota reset is not a
+/// plan renewal, so those windows are ignored.
+public enum BillingRenewal {
+    public static func text(
+        for windows: [QuotaWindow],
+        now: Date = Date(),
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String? {
+        let dates = windows.compactMap { window -> Date? in
+            guard window.window == "billing-cycle" else { return nil }
+            return window.resetDate
+        }
+        guard let date = dates.filter({ $0 > now }).min() ?? dates.max() else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.setLocalizedDateFormatFromTemplate("MMMd")
+        return formatter.string(from: date)
+    }
+}
+

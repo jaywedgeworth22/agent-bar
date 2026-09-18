@@ -310,7 +310,7 @@ public enum ClaudeLoginState: Equatable, Sendable {
         case .connected:
             return nil
         case .needsPermission:
-            return "AgentBar needs your permission to read Claude Code's saved login."
+            return "CodeCaps needs your permission to read Claude Code's saved login."
         case .signedOut:
             return "Claude Code quota login is unavailable." + sentenceGap
                 + "Sign in to Claude Code to connect subscription quotas."

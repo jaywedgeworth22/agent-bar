@@ -1,5 +1,5 @@
 import XCTest
-@testable import AgentBar
+@testable import CodeCaps
 
 /// `TokenStore` talks to the real Keychain, so only its pure parts are pinned
 /// here: which service name a bundle identifier produces, and the state that
