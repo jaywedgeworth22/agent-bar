@@ -64,20 +64,35 @@ public enum LocalQuotaSnapshot {
         try writePrivately(data, to: url, in: directory, using: manager)
     }
 
-    /// Writes the final 0600 mode onto the temporary file before it is renamed
-    /// into place.  `Data.write(options: .atomic)` creates its temporary file at
-    /// the process umask and chmods only afterwards, so the published path is
-    /// briefly readable at umask width — which matters now that the payload
-    /// carries provider reasons.  `rename(2)` is atomic within the directory and
-    /// carries the mode across with the inode.
+    /// Opens the temporary file at 0600 and writes the payload into that
+    /// descriptor, so the bytes are never on disk at a wider mode.  Neither
+    /// `Data.write(options: .atomic)` nor
+    /// `FileManager.createFile(atPath:contents:attributes:)` can do this: both
+    /// write the contents through a temporary of their own at the process umask
+    /// and apply the mode only afterwards, leaving the whole payload readable
+    /// at umask width for the length of the write — which matters now that it
+    /// carries provider reasons, and which the directory mode does not cover,
+    /// because the directory is shared with the consumer and may already exist
+    /// at 0755.  `rename(2)` is atomic within the directory and carries the mode
+    /// across with the inode.
     private static func writePrivately(_ data: Data, to url: URL, in directory: URL, using manager: FileManager) throws {
         let temporary = directory.appendingPathComponent(".quota-windows.\(UUID().uuidString).tmp")
-        guard manager.createFile(atPath: temporary.path, contents: data, attributes: [.posixPermissions: 0o600]) else {
-            throw CocoaError(.fileWriteUnknown)
+        // `O_EXCL` so a name already on disk is never written through, and 0600
+        // in the creation mode so the file is private before it holds a byte.
+        // A restrictive umask can only narrow that, never widen it.
+        let descriptor = temporary.withUnsafeFileSystemRepresentation { path -> Int32 in
+            guard let path else { return -1 }
+            return Foundation.open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         }
+        guard descriptor >= 0 else { throw CocoaError(.fileWriteUnknown) }
+        var isOpen = true
         do {
-            // A restrictive umask can only narrow the creation mode, never widen
-            // it, so this settles the file at exactly 0600 either way.
+            let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: false)
+            try handle.write(contentsOf: data)
+            try handle.close()
+            isOpen = false
+            // An inherited default ACL is the one thing the creation mode cannot
+            // settle, so state it once more before the file becomes visible.
             try manager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: temporary.path)
             let moved = temporary.withUnsafeFileSystemRepresentation { source in
                 url.withUnsafeFileSystemRepresentation { destination -> Int32 in
@@ -87,6 +102,7 @@ public enum LocalQuotaSnapshot {
             }
             guard moved == 0 else { throw CocoaError(.fileWriteUnknown) }
         } catch {
+            if isOpen { _ = Foundation.close(descriptor) }
             try? manager.removeItem(at: temporary)
             throw error
         }
@@ -121,16 +137,27 @@ public enum LocalQuotaSnapshot {
            reason.range(of: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", options: .regularExpression) != nil {
             return false
         }
-        for token in reason.split(whereSeparator: { $0 == " " || $0 == "\t" }) {
+        // Split on every character a secret cannot contain, so a key glued to a
+        // neighbouring word by punctuation — `token(sk-...)`, `key:eyJ...`, an
+        // em-dash join — is still weighed as a word of its own rather than
+        // hiding inside one that fails every check below.  `~` and `\` stay
+        // inside a word so a path is not minced into harmless-looking pieces.
+        for token in reason.split(whereSeparator: { !isWordCharacter($0) }) {
             let body = token.trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?()[]{}'\"<>"))
             let lower = body.lowercased()
             // Vendor key prefixes, checked at a word boundary so ordinary words
             // such as "risk-free" or "task_id" are not mistaken for one.
             if ["sk-", "sk_", "ghp_", "gho_", "ghu_", "github_pat_", "xox", "akia", "xai-", "glpat-", "npm_"]
                 .contains(where: lower.hasPrefix) { return false }
-            // A path that names a credential store, at any depth.
+            // An absolute or home path names the account this Mac belongs to,
+            // and the store at the end of it is routinely one the keyword list
+            // below has no name for.  A reason can say a source is unreadable
+            // without saying where on this disk it lives.
+            if ["/users/", "/home/", "/private/", "~/", "/library/"].contains(where: lower.contains) { return false }
+            // A path that names a credential store, at any depth.  `.mmx` holds
+            // the MiniMax key the reader loads, so it belongs on the list.
             if lower.contains("/") || lower.contains("\\") {
-                if ["credential", "secret", "token", "auth", "keychain", ".env", "id_rsa", ".pem", ".p12", "key"]
+                if ["credential", "secret", "token", "auth", "keychain", ".env", "id_rsa", ".pem", ".p12", "key", ".mmx"]
                     .contains(where: lower.contains) { return false }
             }
             // A long unbroken run of token characters is a secret, not prose.
@@ -146,6 +173,12 @@ public enum LocalQuotaSnapshot {
 
     private static func isTokenCharacter(_ value: Character) -> Bool {
         value.isASCII && (value.isLetter || value.isNumber || "-_./+=".contains(value))
+    }
+
+    /// What a word may be built from for the scan above: every character a
+    /// secret can carry, plus the `~` and `\` that hold a path together.
+    private static func isWordCharacter(_ value: Character) -> Bool {
+        isTokenCharacter(value) || value == "~" || value == "\\"
     }
 
     public static func remove(at url: URL = destination()) throws {

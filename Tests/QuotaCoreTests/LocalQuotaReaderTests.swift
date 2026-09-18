@@ -100,6 +100,33 @@ final class LocalQuotaReaderTests: XCTestCase {
         XCTAssertFalse(result.issues.values.joined(separator: " ").contains("private"))
     }
 
+    /// Every window the reader builds goes through `normalizedForExport()` in
+    /// its factory, and nothing pinned that.  A Claude window at nothing left
+    /// has to reach the consumer already saying so.
+    func testAClaudeWindowAtZeroIsPublishedAsExhausted() async throws {
+        let root = try makeFixtureHome()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try writeJSON(["claudeAiOauth": ["accessToken": "claude-secret", "subscriptionType": "max", "expiresAt": observedAt.addingTimeInterval(3600).timeIntervalSince1970]], to: root.appendingPathComponent(".claude/.credentials.json"))
+        let reader = LocalQuotaReader(
+            homeDirectory: root,
+            now: { self.observedAt },
+            fetchJSON: { request in
+                guard request.url?.host == "api.anthropic.com" else { return Self.httpResponse("{}", status: 500) }
+                return Self.httpResponse(#"{"five_hour":{"utilization":100,"resets_at":"2026-09-13T12:00:00Z"}}"#)
+            },
+            runAntigravity: { Data("{}".utf8) }
+        )
+
+        let result = await reader.read()
+        let window = try XCTUnwrap(result.windows.first { $0.providerKey == "anthropic" && $0.window == "5h" })
+        XCTAssertEqual(window.remainingPercent, 0)
+        XCTAssertEqual(window.status, .exhausted)
+        XCTAssertTrue(window.isExhausted)
+        XCTAssertTrue(window.skip)
+        XCTAssertEqual(window.skipReason, "quota exhausted")
+        XCTAssertFalse(window.remainingUnknown)
+    }
+
     private func makeFixtureHome() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("quota-reader-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: url.appendingPathComponent(".claude"), withIntermediateDirectories: true)
