@@ -165,21 +165,31 @@ public struct QuotaWindow: Codable, Equatable, Sendable {
         return min(100, max(0, value))
     }
 
-    /// Restates the derived fields from the bounded percentage so every window
-    /// leaving this app carries the same contract.  A reader that builds a
-    /// window without a status — the Antigravity grouped summary, for one —
-    /// would otherwise publish `unknown` at zero remaining, and a consumer that
-    /// trusts `status` or `isExhausted` would route to an exhausted pool.
-    /// Applying this twice is a no-op.
+    /// Fills in the derived fields a reader left unset, so every window leaving
+    /// this app carries the same contract.  A reader that builds a window
+    /// without a status — the Antigravity grouped summary, for one — would
+    /// otherwise publish `unknown` at zero remaining, and a consumer that trusts
+    /// `status` or `isExhausted` would route to an exhausted pool.
+    ///
+    /// It only ever fills, never erases.  A source that reports a window as
+    /// exhausted or skipped at a non-zero percentage knows something the
+    /// percentage does not — a rejected session, a suspended plan, a cap the
+    /// percentage lags behind — and this also runs on the display path, where
+    /// restating those fields from the percentage alone would put a pool the
+    /// provider called dead back in front of the user as live.  So the status is
+    /// derived only when the source left it `unknown` and a bounded percentage
+    /// is there to derive it from.  Applying this twice is a no-op.
     public func normalizedForExport() -> QuotaWindow {
         var copy = self
         let bounded = boundedRemainingPercent
         copy.remainingPercent = bounded
         copy.remainingUnknown = bounded == nil
-        copy.isExhausted = bounded == 0
-        copy.status = QuotaWindowStatus.derived(remainingPercent: bounded)
-        copy.skip = copy.isExhausted
-        copy.skipReason = copy.isExhausted ? "quota exhausted" : nil
+        copy.isExhausted = isExhausted || bounded == 0
+        if status == .unknown, bounded != nil {
+            copy.status = QuotaWindowStatus.derived(remainingPercent: bounded)
+        }
+        copy.skip = skip || copy.isExhausted
+        copy.skipReason = skipReason ?? (copy.isExhausted ? "quota exhausted" : nil)
         return copy
     }
 }

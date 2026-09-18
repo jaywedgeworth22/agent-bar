@@ -31,6 +31,27 @@ final class CursorQuotaReaderTests: XCTestCase {
         XCTAssertEqual(result.windows.first?.planName, "pro")
     }
 
+    /// `cursorWindow` normalizes in the factory, and nothing pinned that
+    /// either.  A plan down to its last few percent has to arrive as near cap
+    /// rather than as an unknown the consumer would route work to.
+    func testAPlanNearTheCapIsPublishedAsNearCap() async throws {
+        let token = Self.jwt(subject: "auth0|cursor-user-4", expiration: observedAt.addingTimeInterval(3600))
+        let reader = CursorQuotaReader(
+            now: { self.observedAt },
+            accessToken: { token },
+            fetch: { _ in Self.response(#"{"billingCycleEnd":"2026-10-01T00:00:00Z","membershipType":"pro","individualUsage":{"plan":{"used":9500,"limit":10000,"remaining":500,"totalPercentUsed":95}}}"#) }
+        )
+
+        let result = await reader.read()
+        let window = try XCTUnwrap(result.windows.first)
+        XCTAssertEqual(window.remainingPercent, 5)
+        XCTAssertEqual(window.status, .nearCap)
+        XCTAssertFalse(window.isExhausted)
+        XCTAssertFalse(window.skip)
+        XCTAssertNil(window.skipReason)
+        XCTAssertFalse(window.remainingUnknown)
+    }
+
     func testMissingLocalSessionIsActionableAndDoesNotMakeNetworkRequest() async {
         let reader = CursorQuotaReader(
             accessToken: { nil },

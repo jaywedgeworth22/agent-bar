@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import QuotaCore
 
@@ -55,6 +56,40 @@ final class AntigravityQuotaGroupsTests: XCTestCase {
         XCTAssertEqual(groups.filter { $0.label.hasPrefix("Third-Party") }.map(\.modelType), ["third-party", "third-party"])
         // The family must not re-pool a window into the wrong group on a rerun.
         XCTAssertEqual(AntigravityQuotaGroups.normalize(groups, includeMissing: true), groups)
+    }
+
+    func testASourceReportedExhaustionSurvivesGroupingAndExport() throws {
+        // Antigravity called this pool dead at 15% — a rejected session, a
+        // suspended plan — and the percentage is the last good reading rather
+        // than the reason.  Grouping runs on the display path, so restating
+        // these fields from the percentage alone would put a pool the provider
+        // called dead back in front of the user as live.
+        var reported = report("claude-sonnet", 15, period: "weekly")
+        reported.isExhausted = true
+        reported.status = .exhausted
+        reported.skip = true
+        reported.skipReason = "session rejected"
+
+        let grouped = try XCTUnwrap(AntigravityQuotaGroups.normalize([reported])
+            .first { $0.id == "antigravity:third-party:weekly" })
+        XCTAssertEqual(grouped.remainingPercent, 15)
+        XCTAssertEqual(grouped.status, .exhausted)
+        XCTAssertTrue(grouped.isExhausted)
+        XCTAssertTrue(grouped.skip)
+        XCTAssertEqual(grouped.skipReason, "session rejected")
+
+        // And it survives the writer, which applies the same derivation again.
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("quota-windows.json")
+        try LocalQuotaSnapshot.write(windows: [grouped], to: url)
+        let payload = try JSONDecoder().decode(LocalQuotaSnapshot.Payload.self, from: Data(contentsOf: url))
+        let exported = try XCTUnwrap(payload.windows.first)
+        XCTAssertEqual(exported.remainingPercent, 15)
+        XCTAssertEqual(exported.status, .exhausted)
+        XCTAssertTrue(exported.isExhausted)
+        XCTAssertTrue(exported.skip)
+        XCTAssertEqual(exported.skipReason, "session rejected")
     }
 
     private func report(_ model: String, _ percent: Double, period: String? = nil) -> QuotaWindow {
